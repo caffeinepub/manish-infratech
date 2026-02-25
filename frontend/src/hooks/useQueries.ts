@@ -1,70 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
-import type { Bill, BillOperation, PartySummary, CompanyReport, ProfitLossSummary, UserProfile } from '../backend';
-import { UserRole } from '../backend';
+import type { Bill, BillOperation, PartySummary, CompanyReport, ProfitLossSummary } from '../backend';
 
-// ─── User Role ────────────────────────────────────────────────────────────────
-
-export function useGetCallerUserRole() {
-  const { actor, isFetching: actorFetching } = useActor();
-  const { identity } = useInternetIdentity();
-
-  const query = useQuery<UserRole>({
-    queryKey: ['callerUserRole'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserRole();
-    },
-    enabled: !!actor && !actorFetching && !!identity,
-    retry: false,
-  });
-
-  return {
-    ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
-  };
-}
-
-// ─── User Profile ─────────────────────────────────────────────────────────────
-
-export function useGetCallerUserProfile() {
-  const { actor, isFetching: actorFetching } = useActor();
-
-  const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !actorFetching,
-    retry: false,
-  });
-
-  return {
-    ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
-  };
-}
-
-export function useSaveCallerUserProfile() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.saveCallerUserProfile(profile);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-    },
-  });
-}
-
-// ─── Bills ────────────────────────────────────────────────────────────────────
+// ─── Bills ───────────────────────────────────────────────────────────────────
 
 export function useGetAllBills() {
   const { actor, isFetching } = useActor();
@@ -90,33 +28,32 @@ export function useGetBill(invoiceNumber: string) {
   });
 }
 
-export function useGetAggregate() {
+export function useCheckBillExists(invoiceNumber: string, enabled: boolean) {
   const { actor, isFetching } = useActor();
-  return useQuery<{ totalAmount: number; totalGst: number }>({
-    queryKey: ['aggregate'],
+  return useQuery<boolean>({
+    queryKey: ['billExists', invoiceNumber],
     queryFn: async () => {
-      if (!actor) return { totalAmount: 0, totalGst: 0 };
-      return actor.getAggregate();
+      if (!actor) return false;
+      return actor.billExists(invoiceNumber);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && enabled && !!invoiceNumber,
   });
 }
 
 export function useAddBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation<Bill, Error, BillOperation>({
+  return useMutation({
     mutationFn: async (billOp: BillOperation) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addBill(billOp);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
-      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
-      queryClient.invalidateQueries({ queryKey: ['profitLoss'] });
-      queryClient.invalidateQueries({ queryKey: ['partyNames'] });
-      queryClient.invalidateQueries({ queryKey: ['productNames'] });
+      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
+      queryClient.invalidateQueries({ queryKey: ['uniquePartyNames'] });
+      queryClient.invalidateQueries({ queryKey: ['uniqueProductNames'] });
     },
   });
 }
@@ -124,19 +61,15 @@ export function useAddBill() {
 export function useEditBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation<Bill, Error, { invoiceNumber: string; billOp: BillOperation }>({
-    mutationFn: async ({ invoiceNumber, billOp }) => {
+  return useMutation({
+    mutationFn: async ({ invoiceNumber, billOp }: { invoiceNumber: string; billOp: BillOperation }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.editBill(invoiceNumber, billOp);
     },
-    onSuccess: (_, { invoiceNumber }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
-      queryClient.invalidateQueries({ queryKey: ['bill', invoiceNumber] });
-      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
-      queryClient.invalidateQueries({ queryKey: ['profitLoss'] });
-      queryClient.invalidateQueries({ queryKey: ['companyReport'] });
-      queryClient.invalidateQueries({ queryKey: ['productNames'] });
+      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
     },
   });
 }
@@ -144,75 +77,46 @@ export function useEditBill() {
 export function useDeleteBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation<Bill, Error, string>({
+  return useMutation({
     mutationFn: async (invoiceNumber: string) => {
       if (!actor) throw new Error('Actor not available');
       return actor.deleteBill(invoiceNumber);
     },
-    onSuccess: (_data, invoiceNumber) => {
-      queryClient.invalidateQueries({ queryKey: ['bills'] });
-      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
-      queryClient.removeQueries({ queryKey: ['bill', invoiceNumber] });
-      queryClient.invalidateQueries({ queryKey: ['partySummary'] });
-      queryClient.invalidateQueries({ queryKey: ['profitLoss'] });
-      queryClient.invalidateQueries({ queryKey: ['companyReport'] });
-    },
-  });
-}
-
-export function useBillExists() {
-  const { actor } = useActor();
-  return async (invoiceNumber: string): Promise<boolean> => {
-    if (!actor) return false;
-    return actor.billExists(invoiceNumber);
-  };
-}
-
-// ─── Party Summary ────────────────────────────────────────────────────────────
-
-export function useGetPartySummary() {
-  const { actor, isFetching } = useActor();
-  return useQuery<PartySummary[]>({
-    queryKey: ['partySummary'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getPartySummary();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetPartySummaryByDateRange(from: bigint | null, to: bigint | null) {
-  const { actor, isFetching } = useActor();
-  return useQuery<PartySummary[]>({
-    queryKey: ['partySummary', from?.toString(), to?.toString()],
-    queryFn: async () => {
-      if (!actor) return [];
-      if (from !== null && to !== null) {
-        return actor.getPartySummaryByDateRange(from, to);
-      }
-      return actor.getPartySummary();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ─── Party GST Number ─────────────────────────────────────────────────────────
-
-export function useSavePartyGstNumber() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation<void, Error, { partyName: string; gstNumber: string }>({
-    mutationFn: async ({ partyName, gstNumber }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.savePartyGstNumber(partyName, gstNumber);
-    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
-      queryClient.invalidateQueries({ queryKey: ['partyGst'] });
+      queryClient.invalidateQueries({ queryKey: ['aggregate'] });
     },
   });
 }
+
+// ─── Autocomplete ─────────────────────────────────────────────────────────────
+
+export function useGetUniquePartyNames() {
+  const { actor, isFetching } = useActor();
+  return useQuery<string[]>({
+    queryKey: ['uniquePartyNames'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getUniquePartyNames();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetUniqueProductNames() {
+  const { actor, isFetching } = useActor();
+  return useQuery<string[]>({
+    queryKey: ['uniqueProductNames'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getUniqueProductNames();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ─── Party / GST ─────────────────────────────────────────────────────────────
 
 export function useGetPartyGstNumber(partyName: string) {
   const { actor, isFetching } = useActor();
@@ -226,7 +130,58 @@ export function useGetPartyGstNumber(partyName: string) {
   });
 }
 
-// ─── Company Report ───────────────────────────────────────────────────────────
+export function useSavePartyGstNumber() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ partyName, gstNumber }: { partyName: string; gstNumber: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.savePartyGstNumber(partyName, gstNumber);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['partyGst', variables.partyName] });
+      queryClient.invalidateQueries({ queryKey: ['partySummary'] });
+    },
+  });
+}
+
+// ─── Summaries ────────────────────────────────────────────────────────────────
+
+export function useGetPartySummary() {
+  const { actor, isFetching } = useActor();
+  return useQuery<PartySummary[]>({
+    queryKey: ['partySummary'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPartySummary();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetPartySummaryByDateRange(from: bigint, to: bigint) {
+  const { actor, isFetching } = useActor();
+  return useQuery<PartySummary[]>({
+    queryKey: ['partySummaryRange', from.toString(), to.toString()],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPartySummaryByDateRange(from, to);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetAggregate() {
+  const { actor, isFetching } = useActor();
+  return useQuery<{ totalAmount: number; totalGst: number }>({
+    queryKey: ['aggregate'],
+    queryFn: async () => {
+      if (!actor) return { totalAmount: 0, totalGst: 0 };
+      return actor.getAggregate();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
 
 export function useGetCompanyReport(partyName: string, from: bigint, to: bigint) {
   const { actor, isFetching } = useActor();
@@ -240,8 +195,6 @@ export function useGetCompanyReport(partyName: string, from: bigint, to: bigint)
   });
 }
 
-// ─── Profit & Loss ────────────────────────────────────────────────────────────
-
 export function useGetProfitLossSummary(from: bigint, to: bigint) {
   const { actor, isFetching } = useActor();
   return useQuery<ProfitLossSummary>({
@@ -249,34 +202,6 @@ export function useGetProfitLossSummary(from: bigint, to: bigint) {
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return actor.getProfitLossSummary(from, to);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ─── Autocomplete: Party Names ────────────────────────────────────────────────
-
-export function useGetPartyNames() {
-  const { actor, isFetching } = useActor();
-  return useQuery<string[]>({
-    queryKey: ['partyNames'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getPartyNames();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ─── Autocomplete: Product Names ──────────────────────────────────────────────
-
-export function useGetProductNames() {
-  const { actor, isFetching } = useActor();
-  return useQuery<string[]>({
-    queryKey: ['productNames'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getProductNames();
     },
     enabled: !!actor && !isFetching,
   });

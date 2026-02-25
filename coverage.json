@@ -1,100 +1,109 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T05:39:57.572Z",
+  "generatedAt": "2026-02-25T07:31:56.579Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 7,
+    "total": 5,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-31",
-        "summary": "Display the party's GST number on the printed invoice (InvoicePrintView). Fetch the GST number from the party profile (already stored via savePartyGstNumber) and render it in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line.",
+        "id": "REQ-70",
+        "summary": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/InvoicePrintView.tsx"
+          "frontend/src/components/Layout.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/InvoicePrintView.tsx"
+          "frontend/src/components/Layout.tsx"
         ]
       },
       {
-        "id": "REQ-32",
-        "summary": "Add a Bill Date field to the AddBillForm and EditBillModal. The field must default to today's date (auto-populated on form open). The owner must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate.",
+        "id": "REQ-71",
+        "summary": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/index.css",
+          "frontend/tailwind.config.js",
+          "frontend/src/pages/AddBillPage.tsx",
+          "frontend/src/components/AddBillForm.tsx",
+          "frontend/src/pages/SearchBillsPage.tsx",
+          "frontend/src/components/BillResultsTable.tsx",
+          "frontend/src/pages/SummaryPage.tsx",
+          "frontend/src/components/SummaryCard.tsx",
+          "frontend/src/pages/PartySummaryPage.tsx",
+          "frontend/src/pages/CompanyReportPage.tsx",
+          "frontend/src/components/EditBillModal.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/index.css",
+          "frontend/tailwind.config.js",
+          "frontend/src/pages/AddBillPage.tsx",
+          "frontend/src/components/AddBillForm.tsx",
+          "frontend/src/pages/SearchBillsPage.tsx",
+          "frontend/src/components/BillResultsTable.tsx",
+          "frontend/src/pages/SummaryPage.tsx",
+          "frontend/src/components/SummaryCard.tsx",
+          "frontend/src/pages/PartySummaryPage.tsx",
+          "frontend/src/pages/CompanyReportPage.tsx",
+          "frontend/src/components/EditBillModal.tsx"
+        ]
+      },
+      {
+        "id": "REQ-72",
+        "summary": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/components/AddBillForm.tsx",
+          "frontend/src/components/EditBillModal.tsx",
+          "frontend/src/components/BillResultsTable.tsx",
+          "frontend/src/pages/SearchBillsPage.tsx",
+          "frontend/src/pages/SummaryPage.tsx",
+          "frontend/src/components/SummaryCard.tsx",
+          "frontend/src/pages/PartySummaryPage.tsx",
+          "frontend/src/pages/CompanyReportPage.tsx",
+          "frontend/src/pages/AddBillPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/index.css",
+          "frontend/src/components/AddBillForm.tsx",
+          "frontend/src/components/EditBillModal.tsx",
+          "frontend/src/components/BillResultsTable.tsx",
+          "frontend/src/pages/SearchBillsPage.tsx",
+          "frontend/src/pages/SummaryPage.tsx",
+          "frontend/src/components/SummaryCard.tsx",
+          "frontend/src/pages/PartySummaryPage.tsx",
+          "frontend/src/pages/CompanyReportPage.tsx",
+          "frontend/src/pages/AddBillPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-73",
+        "summary": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/AddBillForm.tsx",
           "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
-          "frontend/src/components/InvoicePrintView.tsx"
+          "frontend/src/pages/PartySummaryPage.tsx"
         ],
         "matchedFiles": [
           "frontend/src/components/AddBillForm.tsx",
           "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
+          "frontend/src/pages/PartySummaryPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-74",
+        "summary": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/AddBillForm.tsx",
+          "frontend/src/components/EditBillModal.tsx",
           "frontend/src/components/InvoicePrintView.tsx"
-        ]
-      },
-      {
-        "id": "REQ-33",
-        "summary": "Increase the maximum number of line item rows per bill from 10 to 30 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 30 rows are present. The backend must accept up to 30 line items per bill.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ]
-      },
-      {
-        "id": "REQ-34",
-        "summary": "Add a 'Download Report' button on the SummaryPage that exports the overall financial summary (all parties, all bills) as a downloadable CSV file. The CSV must include columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. Apply any active date-range filter when generating the export.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/SummaryPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/SummaryPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-35",
-        "summary": "Add a 'Download Report' button on the CompanyReportPage that exports the current party's report as a downloadable CSV file. The CSV must include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Apply any active date-range filter when generating the export.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/CompanyReportPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/CompanyReportPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-36",
-        "summary": "Implement autocomplete suggestions for the Party Name input in AddBillForm and EditBillModal. As the user types, show a dropdown of previously used party names (fetched from existing bills) that match the typed prefix. Selecting a suggestion fills in the party name field. The suggestion list must be sourced from all unique party names already stored in the backend.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ]
-      },
-      {
-        "id": "REQ-37",
-        "summary": "Implement autocomplete suggestions for the Product Name input within line item rows in AddBillForm and EditBillModal. As the user types in a Product Name cell, show a dropdown of previously used product names (from all existing line items across bills) that match the typed prefix. Selecting a suggestion fills in that product name cell.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
         ],
         "matchedFiles": [
           "frontend/src/components/AddBillForm.tsx",
@@ -104,26 +113,23 @@
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
+    "frontend/src/App.tsx",
     "frontend/src/components/AddBillForm.tsx",
-    "frontend/src/components/AutocompleteInput.tsx",
     "frontend/src/components/BillResultsTable.tsx",
     "frontend/src/components/EditBillModal.tsx",
-    "frontend/src/components/InvoicePrintView.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/Layout.tsx",
+    "frontend/src/components/SummaryCard.tsx",
+    "frontend/src/index.css",
+    "frontend/src/pages/AddBillPage.tsx",
     "frontend/src/pages/CompanyReportPage.tsx",
     "frontend/src/pages/PartySummaryPage.tsx",
     "frontend/src/pages/SearchBillsPage.tsx",
     "frontend/src/pages/SummaryPage.tsx",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -81,11 +81,11 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCompanyReport(partyName: string, from: bigint, to: bigint): Promise<CompanyReport>;
     getPartyGstNumber(partyName: string): Promise<string>;
-    getPartyNames(): Promise<Array<string>>;
     getPartySummary(): Promise<Array<PartySummary>>;
     getPartySummaryByDateRange(from: bigint, to: bigint): Promise<Array<PartySummary>>;
-    getProductNames(): Promise<Array<string>>;
     getProfitLossSummary(from: bigint, to: bigint): Promise<ProfitLossSummary>;
+    getUniquePartyNames(): Promise<Array<string>>;
+    getUniqueProductNames(): Promise<Array<string>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;

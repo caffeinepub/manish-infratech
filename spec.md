@@ -1,15 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Enhance the Manish Infratech billing app with GST display on invoices, editable bill dates, 30 line items per bill, CSV report downloads, and autocomplete suggestions for party and product names.
+**Goal:** Full aesthetic redesign of the Manish Infratech app with a white+blue+red theme, black body text, green success states, and fixed invoice column labels.
 
 **Planned changes:**
-- Display the party's GST number in the invoice header (InvoicePrintView) beneath the party name as "GST No: <value>"; omit if not stored
-- Add a Bill Date field to AddBillForm and EditBillModal, defaulting to today's date, editable, stored as Unix timestamp in nanoseconds; show bill date in BillResultsTable, CompanyReportPage, and InvoicePrintView
-- Increase the maximum line item rows per bill from 10 to 30 in AddBillForm, EditBillModal, and backend; disable "Add Row" button at 30 rows
-- Add a "Download Report" button on SummaryPage that exports all bills (filtered by active date range) as a CSV with columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount
-- Add a "Download Report" button on CompanyReportPage that exports the current party's bills (filtered by active date range) as a CSV with party name and GST number as a header block
-- Implement autocomplete dropdown for the Party Name field in AddBillForm and EditBillModal, sourced from unique party names stored in the backend
-- Implement autocomplete dropdown for Product Name cells in line item rows in AddBillForm and EditBillModal, sourced from unique product names across all existing bill line items
+- Redesign the navigation header (Layout.tsx) with a deep navy blue background, MI logo badge (red square with bold white "MI"), "MANISH INFRATECH" in white bold text, white nav links with red hover/active styling, and a red Logout button
+- Apply a consistent white+blue+red theme across all pages: off-white/light gray page backgrounds, white cards with navy borders/shadows, navy primary buttons, navy table headers with white text, alternating white/light-blue-gray table rows, and navy focus rings on inputs
+- Change all body text, form labels, table cell text, headings, and placeholders in content areas to black/dark gray (#1a1a1a); white text only on dark/colored backgrounds (header, navy buttons, red buttons)
+- Display all success/saved confirmation messages (bill saved, edit saved, GST number saved) in green text or with a green background badge
+- Fix line item column headers in AddBillForm and EditBillModal to show: "Sr. No.", "HSN Code", "Product Name", "Qty", "Unit", "Rate (₹)", "Amount (₹)" in bold dark text, with matching placeholders on each input field; apply the same headers to InvoicePrintView
 
-**User-visible outcome:** Users can see party GST numbers on printed invoices, pick or edit bill dates, add up to 30 line items per bill, download CSV reports from both the summary and company report pages, and get autocomplete suggestions when typing party or product names.
+**User-visible outcome:** The entire app has a polished navy/white/red aesthetic with clearly readable black text throughout, green success confirmations, and clearly labeled invoice line item columns.

@@ -9,9 +9,9 @@ import Int "mo:core/Int";
 import Order "mo:core/Order";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // User profile type
   public type UserProfile = {
@@ -87,7 +87,7 @@ actor {
   };
 
   // Maximum line items per bill
-  let MAX_LINE_ITEMS : Nat = 30;
+  let MAX_LINE_ITEMS : Nat = 15; // Reduced from 30 to 15
 
   // Access control state
   let accessControlState = AccessControl.initState();
@@ -163,7 +163,7 @@ actor {
     };
 
     if (billOp.lineItems.size() > MAX_LINE_ITEMS) {
-      Runtime.trap("Too many line items: maximum allowed is 30");
+      Runtime.trap("Too many line items: maximum allowed is 15");
     };
 
     let userStore = getOrCreateUserBillStore(caller, true);
@@ -213,7 +213,7 @@ actor {
     };
 
     if (updatedBillOp.lineItems.size() > MAX_LINE_ITEMS) {
-      Runtime.trap("Too many line items: maximum allowed is 30");
+      Runtime.trap("Too many line items: maximum allowed is 15");
     };
 
     let userStore = getOrCreateUserBillStore(caller, true);
@@ -293,7 +293,7 @@ actor {
     };
 
     switch (userBills.get(caller)) {
-      case (null) { return []; };
+      case (null) { return [] };
       case (?store) {
         let allBills = store.values().toArray();
         allBills.filter(
@@ -311,7 +311,7 @@ actor {
     };
 
     switch (userBills.get(caller)) {
-      case (null) { return []; };
+      case (null) { return [] };
       case (?store) {
         let allBills = store.values().toArray();
         allBills.sort(
@@ -545,7 +545,7 @@ actor {
   };
 
   // Returns all unique party names from the caller's bills for autocomplete suggestions
-  public query ({ caller }) func getPartyNames() : async [Text] {
+  public query ({ caller }) func getUniquePartyNames() : async [Text] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only the owner can view party names");
     };
@@ -564,7 +564,7 @@ actor {
   };
 
   // Returns all unique product names from the caller's bills for autocomplete suggestions
-  public query ({ caller }) func getProductNames() : async [Text] {
+  public query ({ caller }) func getUniqueProductNames() : async [Text] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only the owner can view product names");
     };

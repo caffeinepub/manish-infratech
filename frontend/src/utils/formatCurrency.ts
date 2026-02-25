@@ -1,8 +1,4 @@
-/**
- * Formats a number as Indian currency with ₹ symbol.
- * Uses Indian numbering system (lakhs, crores).
- */
-export function formatCurrency(amount: number): string {
+export function formatINR(amount: number): string {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
@@ -11,9 +7,9 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-/**
- * Formats a number with ₹ prefix and 2 decimal places (compact).
- */
-export function formatAmount(amount: number): string {
-  return `₹${amount.toFixed(2)}`;
+export function formatNumber(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }

@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-display-the-party-s-gst-number-on-the-printed-invoice-invoiceprintview-fetch-the-gst-number-from-the-party-profile-already-stored-via-savepartygstnumber-and-render-it-in-the-invoice-header-section-beneath-the-party-name-formatted-as-gst-no-value-if-no-gst-number-is-stored-for-the-party-omit-the-line",
-      "featureTitle": "Display the party's GST number on the printed invoice (InvoicePrintView). Fetch the GST number from the party profile (already stored via savePartyGstNumber) and render it in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line.",
+      "featureId": "feature-redesign-the-main-navigation-header-layout-tsx-with-a-professional-aesthetic-use-a-deep-navy-blue-background-display-the-mi-logo-a-bold-square-badge-with-mi-initials-in-white-on-a-red-background-on-the-left-followed-by-manish-infratech-in-white-bold-typography-navigation-links-add-bill-search-bills-summary-party-summary-must-be-styled-with-white-text-and-a-red-active-hover-underline-or-highlight-the-logout-button-must-be-styled-with-a-red-background-and-white-text-apply-this-header-consistently-across-all-pages",
+      "featureTitle": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
       "files": [
-        "frontend/src/components/InvoicePrintView.tsx"
+        "frontend/src/components/Layout.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -16,19 +16,25 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-31"
+        "REQ-70"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-bill-date-field-to-the-addbillform-and-editbillmodal-the-field-must-default-to-today-s-date-auto-populated-on-form-open-the-owner-must-be-able-to-manually-change-the-date-before-submitting-the-selected-date-must-be-submitted-to-the-backend-as-the-bill-s-billdate-unix-timestamp-in-nanoseconds-on-edit-the-field-must-be-pre-filled-with-the-existing-bill-s-billdate",
-      "featureTitle": "Add a Bill Date field to the AddBillForm and EditBillModal. The field must default to today's date (auto-populated on form open). The owner must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate.",
+      "featureId": "feature-apply-a-consistent-white-blue-red-color-theme-across-every-page-of-the-app-add-bill-search-bills-summary-party-summary-company-report-page-backgrounds-must-be-warm-off-white-or-light-gray-not-pure-white-section-cards-and-form-containers-must-have-white-backgrounds-with-a-subtle-navy-blue-border-or-shadow-primary-action-buttons-save-bill-search-apply-filter-download-report-must-use-a-deep-navy-blue-background-with-white-text-secondary-outline-buttons-must-use-a-white-background-with-navy-blue-border-and-text-table-headers-must-use-a-deep-navy-blue-background-with-white-text-table-rows-must-alternate-between-white-and-a-very-light-blue-gray-all-input-fields-must-have-a-navy-blue-focus-ring",
+      "featureTitle": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
       "files": [
         "frontend/src/components/AddBillForm.tsx",
         "frontend/src/components/BillResultsTable.tsx",
         "frontend/src/components/EditBillModal.tsx",
-        "frontend/src/components/InvoicePrintView.tsx",
-        "frontend/src/pages/CompanyReportPage.tsx"
+        "frontend/src/components/SummaryCard.tsx",
+        "frontend/src/index.css",
+        "frontend/src/pages/AddBillPage.tsx",
+        "frontend/src/pages/CompanyReportPage.tsx",
+        "frontend/src/pages/PartySummaryPage.tsx",
+        "frontend/src/pages/SearchBillsPage.tsx",
+        "frontend/src/pages/SummaryPage.tsx",
+        "frontend/tailwind.config.js"
       ],
       "components": [
         "authorization@4.0.0",
@@ -39,34 +45,23 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-32"
+        "REQ-71"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-increase-the-maximum-number-of-line-item-rows-per-bill-from-10-to-30-in-both-addbillform-and-editbillmodal-the-add-row-button-must-be-disabled-once-30-rows-are-present-the-backend-must-accept-up-to-30-line-items-per-bill",
-      "featureTitle": "Increase the maximum number of line item rows per bill from 10 to 30 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 30 rows are present. The backend must accept up to 30 line items per bill.",
+      "featureId": "feature-change-all-body-text-form-labels-table-cell-text-heading-text-and-placeholder-text-throughout-the-entire-app-to-use-black-or-very-dark-gray-1a1a1a-or-equivalent-instead-of-white-no-text-in-the-main-content-area-forms-tables-cards-page-bodies-should-be-white-white-text-is-only-acceptable-on-intentionally-dark-colored-backgrounds-such-as-the-navigation-header-navy-button-backgrounds-or-red-button-backgrounds",
+      "featureTitle": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
       "files": [
         "frontend/src/components/AddBillForm.tsx",
-        "frontend/src/components/EditBillModal.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-33"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-download-report-button-on-the-summarypage-that-exports-the-overall-financial-summary-all-parties-all-bills-as-a-downloadable-csv-file-the-csv-must-include-columns-invoice-no-party-name-gst-no-bill-date-base-amount-cgst-sgst-round-off-final-amount-amount-paid-pending-amount-apply-any-active-date-range-filter-when-generating-the-export",
-      "featureTitle": "Add a 'Download Report' button on the SummaryPage that exports the overall financial summary (all parties, all bills) as a downloadable CSV file. The CSV must include columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. Apply any active date-range filter when generating the export.",
-      "files": [
+        "frontend/src/components/BillResultsTable.tsx",
+        "frontend/src/components/EditBillModal.tsx",
+        "frontend/src/components/SummaryCard.tsx",
+        "frontend/src/index.css",
+        "frontend/src/pages/AddBillPage.tsx",
+        "frontend/src/pages/CompanyReportPage.tsx",
+        "frontend/src/pages/PartySummaryPage.tsx",
+        "frontend/src/pages/SearchBillsPage.tsx",
         "frontend/src/pages/SummaryPage.tsx"
       ],
       "components": [
@@ -78,15 +73,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-34"
+        "REQ-72"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-a-download-report-button-on-the-companyreportpage-that-exports-the-current-party-s-report-as-a-downloadable-csv-file-the-csv-must-include-columns-invoice-no-bill-date-base-amount-final-amount-amount-paid-pending-apply-any-active-date-range-filter-when-generating-the-export",
-      "featureTitle": "Add a 'Download Report' button on the CompanyReportPage that exports the current party's report as a downloadable CSV file. The CSV must include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Apply any active date-range filter when generating the export.",
+      "featureId": "feature-display-all-success-saved-confirmation-messages-and-success-toast-notifications-in-green-text-or-with-a-green-background-badge-this-includes-the-bill-saved-confirmation-after-submitting-addbillform-the-edit-saved-confirmation-after-editbillmodal-submission-the-gst-number-saved-confirmation-on-partysummarypage-and-any-other-success-state-currently-rendered-in-white-or-another-non-visible-color",
+      "featureTitle": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
       "files": [
-        "frontend/src/pages/CompanyReportPage.tsx"
+        "frontend/src/components/AddBillForm.tsx",
+        "frontend/src/components/EditBillModal.tsx",
+        "frontend/src/pages/PartySummaryPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -97,13 +94,13 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-35"
+        "REQ-73"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-implement-autocomplete-suggestions-for-the-party-name-input-in-addbillform-and-editbillmodal-as-the-user-types-show-a-dropdown-of-previously-used-party-names-fetched-from-existing-bills-that-match-the-typed-prefix-selecting-a-suggestion-fills-in-the-party-name-field-the-suggestion-list-must-be-sourced-from-all-unique-party-names-already-stored-in-the-backend",
-      "featureTitle": "Implement autocomplete suggestions for the Party Name input in AddBillForm and EditBillModal. As the user types, show a dropdown of previously used party names (fetched from existing bills) that match the typed prefix. Selecting a suggestion fills in the party name field. The suggestion list must be sourced from all unique party names already stored in the backend.",
+      "featureId": "feature-fix-the-line-item-column-headers-and-input-field-placeholders-in-addbillform-and-editbillmodal-so-that-each-column-is-clearly-and-visibly-labeled-the-table-header-row-must-show-the-following-column-labels-in-bold-dark-text-sr-no-hsn-code-product-name-qty-unit-rate-amount-each-input-field-within-a-row-must-have-a-matching-placeholder-e-g-placeholder-qty-for-the-quantity-input-placeholder-unit-for-the-unit-input-placeholder-rate-for-the-rate-input-the-computed-amount-column-must-display-the-calculated-value-clearly-ensure-column-headers-are-always-visible-and-not-hidden-or-white-on-white",
+      "featureTitle": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
       "files": [
         "frontend/src/components/AddBillForm.tsx",
         "frontend/src/components/EditBillModal.tsx"
@@ -117,27 +114,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-36"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-autocomplete-suggestions-for-the-product-name-input-within-line-item-rows-in-addbillform-and-editbillmodal-as-the-user-types-in-a-product-name-cell-show-a-dropdown-of-previously-used-product-names-from-all-existing-line-items-across-bills-that-match-the-typed-prefix-selecting-a-suggestion-fills-in-that-product-name-cell",
-      "featureTitle": "Implement autocomplete suggestions for the Product Name input within line item rows in AddBillForm and EditBillModal. As the user types in a Product Name cell, show a dropdown of previously used product names (from all existing line items across bills) that match the typed prefix. Selecting a suggestion fills in that product name cell.",
-      "files": [
-        "frontend/src/components/AddBillForm.tsx",
-        "frontend/src/components/EditBillModal.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-37"
+        "REQ-74"
       ],
       "confidence": "high"
     }

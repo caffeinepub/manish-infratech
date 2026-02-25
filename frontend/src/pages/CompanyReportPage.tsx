@@ -1,164 +1,297 @@
-import React, { useState } from 'react';
-import { useSearch } from '@tanstack/react-router';
-import { useGetCompanyReport, useGetPartyGstNumber } from '../hooks/useQueries';
-import BillResultsTable from '../components/BillResultsTable';
-import { formatCurrency } from '../utils/formatCurrency';
-import { Building2, Download } from 'lucide-react';
-import type { Bill } from '../backend';
+import React, { useState, useEffect } from 'react';
+import { useGetAllBills, useGetCompanyReport } from '../hooks/useQueries';
+import { Building2, Download, Filter, Loader2 } from 'lucide-react';
 
-function formatBillDate(ns: bigint): string {
-  if (!ns) return '';
-  const ms = Number(ns) / 1_000_000;
-  if (!ms) return '';
-  const d = new Date(ms);
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+const formatINR = (amount: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
 
-function startOfDayNs(dateStr: string): bigint {
-  const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
-  return BigInt(d.getTime()) * BigInt(1_000_000);
-}
-
-function endOfDayNs(dateStr: string): bigint {
-  const d = new Date(dateStr);
-  d.setHours(23, 59, 59, 999);
-  return BigInt(d.getTime()) * BigInt(1_000_000);
-}
+const formatDate = (billDate: bigint): string => {
+  const ms = Number(billDate / 1_000_000n);
+  const date = new Date(ms);
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
 
 export default function CompanyReportPage() {
-  const search = useSearch({ from: '/company-report' }) as { party?: string };
-  const partyName = search.party || '';
-
+  const [selectedParty, setSelectedParty] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [appliedParty, setAppliedParty] = useState('');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
 
-  const fromNs = fromDate ? startOfDayNs(fromDate) : BigInt(0);
-  const toNs = toDate ? endOfDayNs(toDate) : BigInt(Date.now()) * BigInt(1_000_000);
+  const { data: allBills = [] } = useGetAllBills();
+  const partyNames = Array.from(new Set(allBills.map(b => b.partyName))).sort();
 
-  const { data: report, isLoading } = useGetCompanyReport(partyName, fromNs, toNs);
-  const { data: gstNumber = '' } = useGetPartyGstNumber(partyName);
+  const fromNs = appliedFrom ? BigInt(new Date(appliedFrom).getTime()) * 1_000_000n : 0n;
+  const toNs = appliedTo ? BigInt(new Date(appliedTo).getTime() + 86400000) * 1_000_000n : BigInt(Date.now() + 86400000 * 365) * 1_000_000n;
 
-  const downloadCSV = () => {
+  const { data: report, isLoading } = useGetCompanyReport(appliedParty, fromNs, toNs);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const partyParam = params.get('party');
+    if (partyParam) {
+      setSelectedParty(partyParam);
+      setAppliedParty(partyParam);
+    }
+  }, []);
+
+  const handleGenerateReport = () => {
+    setAppliedParty(selectedParty);
+    setAppliedFrom(fromDate);
+    setAppliedTo(toDate);
+  };
+
+  const handleDownloadCSV = () => {
     if (!report) return;
-    const bills = report.bills;
-
-    const headerRows = [
-      [`Party Name: ${partyName}`],
-      [`GST No: ${gstNumber || 'N/A'}`],
-      [],
-      ['Invoice No.', 'Bill Date', 'Base Amount', 'CGST', 'SGST', 'Final Amount', 'Amount Paid', 'Pending'],
-    ];
-
-    const dataRows = bills.map(bill => [
-      bill.invoiceNumber,
-      formatBillDate(bill.billDate),
-      bill.baseAmount.toFixed(2),
-      bill.cgst.toFixed(2),
-      bill.sgst.toFixed(2),
-      bill.finalAmount.toFixed(2),
-      bill.amountPaid.toFixed(2),
-      bill.pendingAmount.toFixed(2),
+    const headers = ['Invoice No.', 'Date', 'Base Amount', 'GST', 'Total Amount', 'Paid', 'Pending'];
+    const rows = report.bills.map(b => [
+      b.invoiceNumber,
+      formatDate(b.billDate),
+      b.baseAmount.toFixed(2),
+      b.totalGst.toFixed(2),
+      b.finalAmount.toFixed(2),
+      b.amountPaid.toFixed(2),
+      b.pendingAmount.toFixed(2),
     ]);
-
-    const allRows = [...headerRows, ...dataRows];
-    const csv = allRows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const safeName = partyName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    a.download = `${safeName}-report.csv`;
+    a.download = `${appliedParty}-report.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const inputCls = 'border border-navy-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-saffron-400 bg-white text-navy-900';
+  const inputStyle: React.CSSProperties = {
+    border: '1.5px solid #cbd5e1',
+    borderRadius: '6px',
+    padding: '8px 10px',
+    fontSize: '14px',
+    color: '#1a1a2e',
+    backgroundColor: '#ffffff',
+    outline: 'none',
+  };
 
-  if (!partyName) {
-    return (
-      <div className="text-center py-16 text-navy-400">
-        <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p>No party selected. Go to Party Summary and click "View Report".</p>
-      </div>
-    );
-  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#1e3a8a',
+    marginBottom: '4px',
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Building2 className="h-6 w-6 text-saffron-500" />
-            <h1 className="text-2xl font-bold text-navy-800">{partyName}</h1>
+    <div>
+      {/* Page Header */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+          <div style={{ backgroundColor: '#1e3a8a', borderRadius: '8px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Building2 size={20} color="#ffffff" />
           </div>
-          {gstNumber && (
-            <p className="text-sm text-navy-600 ml-9">
-              <span className="font-semibold">GST No:</span> {gstNumber}
+          <div>
+            <h1 style={{ color: '#1e3a8a', fontSize: '22px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+              Company Report
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+              Detailed billing report for a specific party
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Card */}
+      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', padding: '18px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
+          <div>
+            <label style={labelStyle}>Select Party *</label>
+            <select
+              value={selectedParty}
+              onChange={e => setSelectedParty(e.target.value)}
+              style={{ ...inputStyle, minWidth: '200px', cursor: 'pointer' }}
+              onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+              onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
+            >
+              <option value="">-- Select Party --</option>
+              {partyNames.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              style={inputStyle}
+              onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+              onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              style={inputStyle}
+              onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+              onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
+            />
+          </div>
+          <button
+            onClick={handleGenerateReport}
+            disabled={!selectedParty}
+            style={{
+              backgroundColor: !selectedParty ? '#94a3b8' : '#1e3a8a',
+              color: '#ffffff', border: 'none',
+              borderRadius: '7px', padding: '9px 18px', fontSize: '13px',
+              fontWeight: 600, cursor: !selectedParty ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}
+          >
+            <Filter size={14} />
+            Generate Report
+          </button>
+          {report && report.bills.length > 0 && (
+            <button
+              onClick={handleDownloadCSV}
+              style={{
+                backgroundColor: '#ffffff', color: '#1e3a8a',
+                border: '1.5px solid #1e3a8a', borderRadius: '7px',
+                padding: '9px 18px', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              <Download size={14} />
+              Download CSV
+            </button>
           )}
         </div>
-        <button
-          onClick={downloadCSV}
-          disabled={!report || report.bills.length === 0}
-          className="flex items-center gap-2 bg-saffron-500 hover:bg-saffron-600 text-white text-sm font-semibold px-4 py-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed self-start"
-        >
-          <Download className="h-4 w-4" />
-          Download Report
-        </button>
       </div>
 
-      {/* Date Filter */}
-      <div className="flex flex-wrap items-center gap-3 bg-white rounded-lg border border-navy-200 p-4">
-        <span className="text-sm font-semibold text-navy-700">Filter by Date:</span>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-navy-600">From</label>
-          <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className={inputCls} />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-navy-600">To</label>
-          <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className={inputCls} />
-        </div>
-        {(fromDate || toDate) && (
-          <button
-            onClick={() => { setFromDate(''); setToDate(''); }}
-            className="text-xs text-navy-500 hover:text-navy-700 underline"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-
-      {/* Summary Cards */}
+      {/* Report Content */}
       {isLoading ? (
-        <div className="text-navy-400 text-sm">Loading report...</div>
-      ) : report ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px' }}>
+          <Loader2 size={24} color="#1e3a8a" className="animate-spin" />
+          <span style={{ color: '#64748b', fontSize: '15px' }}>Generating report...</span>
+        </div>
+      ) : appliedParty && report ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-navy-800 text-white rounded-xl p-5 shadow">
-              <p className="text-xs text-saffron-300 uppercase tracking-wider font-semibold mb-1">Total Service Amount</p>
-              <p className="text-2xl font-bold">{formatCurrency(report.totalServiceAmount)}</p>
-            </div>
-            <div className="bg-green-700 text-white rounded-xl p-5 shadow">
-              <p className="text-xs text-green-200 uppercase tracking-wider font-semibold mb-1">Total Received</p>
-              <p className="text-2xl font-bold">{formatCurrency(report.totalReceived)}</p>
-            </div>
-            <div className={`rounded-xl p-5 shadow text-white ${report.totalPending > 0 ? 'bg-red-600' : 'bg-green-600'}`}>
-              <p className="text-xs uppercase tracking-wider font-semibold mb-1 opacity-80">Pending</p>
-              <p className="text-2xl font-bold">{formatCurrency(report.totalPending)}</p>
-            </div>
+          {/* Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+            {[
+              { label: 'Total Billed', value: formatINR(report.totalServiceAmount), color: '#1e3a8a' },
+              { label: 'Total Received', value: formatINR(report.totalReceived), color: '#16a34a' },
+              { label: 'Total Pending', value: formatINR(report.totalPending), color: '#dc2626' },
+            ].map(({ label, value, color }) => (
+              <div
+                key={label}
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: `1.5px solid ${color}30`,
+                  borderLeft: `4px solid ${color}`,
+                  borderRadius: '8px',
+                  padding: '14px 16px',
+                }}
+              >
+                <p style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {label}
+                </p>
+                <p style={{ color, fontSize: '20px', fontWeight: 800, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+                  {value}
+                </p>
+              </div>
+            ))}
           </div>
 
           {/* Bills Table */}
-          <div>
-            <h2 className="text-lg font-bold text-navy-800 mb-3">
-              Bills ({report.bills.length})
-            </h2>
-            <BillResultsTable bills={report.bills} hideActions={false} />
+          <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
+            <div style={{ backgroundColor: '#1e3a8a', padding: '12px 16px' }}>
+              <h3 style={{ color: '#ffffff', fontSize: '14px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+                Bills for {appliedParty} ({report.bills.length})
+              </h3>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#eff6ff' }}>
+                    {['Invoice No.', 'Date', 'Base Amount', 'GST (18%)', 'Total Amount', 'Paid', 'Pending'].map(header => (
+                      <th
+                        key={header}
+                        style={{
+                          color: '#1e3a8a',
+                          padding: '10px 14px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          textAlign: 'left',
+                          borderBottom: '2px solid #bfdbfe',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.bills.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                        No bills found for the selected criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    report.bills.map((bill, index) => (
+                      <tr
+                        key={bill.invoiceNumber}
+                        style={{
+                          backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff',
+                          borderBottom: '1px solid #dbeafe',
+                        }}
+                      >
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#1e3a8a', fontWeight: 600 }}>
+                          {bill.invoiceNumber}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#374151' }}>
+                          {formatDate(bill.billDate)}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#374151' }}>
+                          {formatINR(bill.baseAmount)}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#374151' }}>
+                          {formatINR(bill.totalGst)}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#1a1a2e', fontWeight: 700 }}>
+                          {formatINR(bill.finalAmount)}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: '#16a34a', fontWeight: 600 }}>
+                          {formatINR(bill.amountPaid)}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '13px', color: bill.pendingAmount > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
+                          {formatINR(bill.pendingAmount)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
-      ) : null}
+      ) : (
+        <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', padding: '40px', textAlign: 'center' }}>
+          <Building2 size={40} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+          <p style={{ color: '#64748b', fontSize: '15px', fontWeight: 500 }}>
+            Select a party and click "Generate Report" to view the billing report.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

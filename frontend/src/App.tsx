@@ -1,33 +1,33 @@
-import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/react-router';
-import { Toaster } from '@/components/ui/sonner';
-import Layout from './components/Layout';
+import React from 'react';
+import {
+  createRouter,
+  createRoute,
+  createRootRoute,
+  RouterProvider,
+  Outlet,
+} from '@tanstack/react-router';
 import AuthGuard from './components/AuthGuard';
+import Layout from './components/Layout';
 import AddBillPage from './pages/AddBillPage';
 import SearchBillsPage from './pages/SearchBillsPage';
 import SummaryPage from './pages/SummaryPage';
-import InvoicePrintPage from './pages/InvoicePrintPage';
 import PartySummaryPage from './pages/PartySummaryPage';
 import CompanyReportPage from './pages/CompanyReportPage';
+import InvoicePrintPage from './pages/InvoicePrintPage';
 
-const rootRoute = createRootRoute({
-  component: () => (
+function RootLayout() {
+  return (
     <AuthGuard>
-      <Layout>
-        <Outlet />
-      </Layout>
+      <Layout />
     </AuthGuard>
-  ),
-});
+  );
+}
+
+const rootRoute = createRootRoute({ component: RootLayout });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: AddBillPage,
-});
-
-const addBillRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/add-bill',
   component: AddBillPage,
 });
 
@@ -43,12 +43,6 @@ const summaryRoute = createRoute({
   component: SummaryPage,
 });
 
-const invoicePrintRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/invoice/$invoiceNumber/print',
-  component: InvoicePrintPage,
-});
-
 const partySummaryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/party-summary',
@@ -61,14 +55,19 @@ const companyReportRoute = createRoute({
   component: CompanyReportPage,
 });
 
+const invoicePrintRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invoice/$id/print',
+  component: InvoicePrintPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  addBillRoute,
   searchRoute,
   summaryRoute,
-  invoicePrintRoute,
   partySummaryRoute,
   companyReportRoute,
+  invoicePrintRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -80,10 +79,5 @@ declare module '@tanstack/react-router' {
 }
 
 export default function App() {
-  return (
-    <>
-      <RouterProvider router={router} />
-      <Toaster richColors position="top-right" />
-    </>
-  );
+  return <RouterProvider router={router} />;
 }

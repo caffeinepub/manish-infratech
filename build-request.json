@@ -1,156 +1,137 @@
 {
   "kind": "build_request",
-  "title": "GST on invoice, editable bill date, 30 line items, report downloads, and autocomplete suggestions",
+  "title": "Full app aesthetic redesign: MI logo, white+blue+red theme, black text, green saved state, invoice column label fixes",
   "projectName": "Manish Infratech",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-31",
-      "text": "Display the party's GST number on the printed invoice (InvoicePrintView). Fetch the GST number from the party profile (already stored via savePartyGstNumber) and render it in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line.",
+      "id": "REQ-70",
+      "text": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-6",
+          "msg-8",
+          "msg-10"
         ],
         "quotes": [
-          "Their gst number should be written in bill"
+          "make it esthetic good looking MI written as logo in white+blue+red theme and whole app also",
+          "Redesign it and make it esthetic",
+          "all text in black color"
         ]
       },
       "acceptanceCriteria": [
-        "When printing/viewing an invoice for a party that has a stored GST number, the GST number appears in the invoice header beneath the party name.",
-        "The label reads 'GST No:' followed by the GST number value.",
-        "When no GST number is stored for the party, the GST No line is not rendered in the print view."
+        "Navigation header has a deep navy blue background",
+        "MI logo badge (red square with bold white 'MI') is visible in the top-left of the header",
+        "'MANISH INFRATECH' text is visible in white bold typography next to the logo",
+        "All nav links are white with red hover/active styling",
+        "Logout button is red with white text",
+        "Header is consistent across Add Bill, Search Bills, Summary, Party Summary, and Company Report pages"
       ]
     },
     {
-      "id": "REQ-32",
-      "text": "Add a Bill Date field to the AddBillForm and EditBillModal. The field must default to today's date (auto-populated on form open). The owner must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "the date is automatically selection and i can alter it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The Add Bill form shows a date input defaulting to today's date when opened.",
-        "The user can change the date to any value before saving.",
-        "The Edit Bill modal shows the existing bill date pre-filled in the date input.",
-        "The submitted bill date is correctly stored in the backend as a Unix timestamp in nanoseconds.",
-        "The bill date is visible in BillResultsTable, CompanyReportPage, and InvoicePrintView."
-      ]
-    },
-    {
-      "id": "REQ-33",
-      "text": "Increase the maximum number of line item rows per bill from 10 to 30 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 30 rows are present. The backend must accept up to 30 line items per bill.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "the number of rows made them 30"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The Add Bill form allows adding up to 30 line item rows.",
-        "The Edit Bill modal allows up to 30 line item rows.",
-        "The 'Add Row' button is disabled or hidden once 30 rows exist.",
-        "The backend accepts and persists bills with up to 30 line items without error."
-      ]
-    },
-    {
-      "id": "REQ-34",
-      "text": "Add a 'Download Report' button on the SummaryPage that exports the overall financial summary (all parties, all bills) as a downloadable CSV file. The CSV must include columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. Apply any active date-range filter when generating the export.",
+      "id": "REQ-71",
+      "text": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "can download report make it like that the option to download report of total"
+          "white+blue+red theme and whole app also",
+          "Redesign it and make it esthetic"
         ]
       },
       "acceptanceCriteria": [
-        "A 'Download Report' button is visible on the SummaryPage.",
-        "Clicking it triggers a browser download of a CSV file.",
-        "The CSV contains the specified columns for all bills (filtered by active date range if set).",
-        "The filename is descriptive, e.g. 'manish-infratech-total-report.csv'."
+        "Page backgrounds across all pages are off-white or light gray, not pure white",
+        "Card/form containers have white backgrounds with subtle navy borders or shadows",
+        "Primary buttons (Save Bill, Search, etc.) are deep navy with white text",
+        "Table headers are navy blue with white text",
+        "Table rows alternate white and light blue-gray",
+        "Input fields show a navy blue focus ring",
+        "Red is used as an accent color for highlights, badges, active states, and error indicators"
       ]
     },
     {
-      "id": "REQ-35",
-      "text": "Add a 'Download Report' button on the CompanyReportPage that exports the current party's report as a downloadable CSV file. The CSV must include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Apply any active date-range filter when generating the export.",
+      "id": "REQ-72",
+      "text": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-10"
         ],
         "quotes": [
-          "company-wide also"
+          "all are written in pure white so not visible so make all text in black color"
         ]
       },
       "acceptanceCriteria": [
-        "A 'Download Report' button is visible on the CompanyReportPage.",
-        "Clicking it triggers a browser download of a CSV file named after the party (e.g. 'party-name-report.csv').",
-        "The CSV contains the specified columns for all bills shown (filtered by active date range if set).",
-        "The party name and GST number appear in the first two rows of the CSV as a header block."
+        "All form labels in AddBillForm and EditBillModal are black/dark text",
+        "All table cell text in BillResultsTable, PartySummaryPage, CompanyReportPage, and SummaryPage is black/dark",
+        "All page headings and section titles are black/dark",
+        "Input field text values are black/dark",
+        "No white text appears on light/white backgrounds anywhere in the app",
+        "'Save Bill' button label is clearly visible (white on navy background)"
       ]
     },
     {
-      "id": "REQ-36",
-      "text": "Implement autocomplete suggestions for the Party Name input in AddBillForm and EditBillModal. As the user types, show a dropdown of previously used party names (fetched from existing bills) that match the typed prefix. Selecting a suggestion fills in the party name field. The suggestion list must be sourced from all unique party names already stored in the backend.",
-      "target": "both",
+      "id": "REQ-73",
+      "text": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-10"
         ],
         "quotes": [
-          "once company name used it should be in suggestions"
+          "saved text in green not to use white text"
         ]
       },
       "acceptanceCriteria": [
-        "Typing in the Party Name field shows a filtered dropdown of previously used party names.",
-        "The suggestions are fetched from the backend (unique party names from existing bills or party profiles).",
-        "Selecting a suggestion from the dropdown populates the Party Name field.",
-        "The dropdown closes when a selection is made or the user clicks away.",
-        "If no suggestions match the current input, the dropdown is hidden."
+        "Bill saved confirmation message is displayed in green",
+        "Edit bill saved confirmation is displayed in green",
+        "GST number saved confirmation is displayed in green",
+        "No success message is rendered in white text on a white or light background"
       ]
     },
     {
-      "id": "REQ-37",
-      "text": "Implement autocomplete suggestions for the Product Name input within line item rows in AddBillForm and EditBillModal. As the user types in a Product Name cell, show a dropdown of previously used product names (from all existing line items across bills) that match the typed prefix. Selecting a suggestion fills in that product name cell.",
-      "target": "both",
+      "id": "REQ-74",
+      "text": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-8",
+          "msg-10"
         ],
         "quotes": [
-          "product also in suggestions"
+          "in the invoice no written where to write quantity where unit and where price so fix it up",
+          "Fix invoice line item column headers/placeholders so it's clear which field is for Quantity, Unit, and Price/Rate"
         ]
       },
       "acceptanceCriteria": [
-        "Typing in any Product Name cell within the line items table shows a filtered dropdown of previously used product names.",
-        "The suggestions are sourced from all unique product names stored across existing bill line items.",
-        "Selecting a suggestion fills in the Product Name field for that row.",
-        "The dropdown closes when a selection is made or focus leaves the field.",
-        "The backend exposes a query to return all unique product names for the owner, or the frontend derives them from fetched bill data."
+        "Line item table in AddBillForm has visible column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)",
+        "Line item table in EditBillModal has the same visible column headers",
+        "Qty input has placeholder 'Qty'",
+        "Unit input has placeholder 'Unit'",
+        "Rate input has placeholder 'Rate'",
+        "HSN Code input has placeholder 'HSN Code'",
+        "Product Name input has placeholder 'Product Name'",
+        "Column headers are in dark/black text and clearly visible against the table header background",
+        "The printed invoice (InvoicePrintView) also displays the same column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)"
       ]
     }
   ],
   "constraints": [
-    "Do not change the navy/saffron visual theme.",
-    "Report downloads must use browser-native CSV generation (no external libraries required); do not use server-side PDF generation.",
-    "Autocomplete dropdowns must not block or overlap form submit buttons.",
-    "All backend changes must remain within the single main actor in backend/main.mo."
+    "Do not change the invoice print view's red header band, white body, or red accent GST summary borders — only the on-screen app theme is being updated",
+    "Do not modify files in frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "Do not change any backend logic, data models, or API signatures",
+    "The MI logo in the navigation header must be rendered as an inline styled HTML element (not a generated image file dependency)"
   ],
   "nonGoals": [
-    "Sending reports via email or any third-party service.",
-    "Generating PDF exports (CSV only for report downloads).",
-    "Adding new user roles or multi-user access.",
-    "Changing the existing GST calculation logic (CGST 9% + SGST 9%)."
+    "Changing the invoice print view's red/white color scheme",
+    "Adding new pages or navigation routes",
+    "Modifying backend Motoko code",
+    "Changing authentication logic or credentials",
+    "Adding new form fields or data model changes"
   ],
   "imageRequirements": {
     "required": [],

@@ -1,272 +1,345 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { useEditBill, useGetPartyNames, useGetProductNames } from '../hooks/useQueries';
-import type { Bill, LineItem } from '../backend';
-import { formatCurrency } from '../utils/formatCurrency';
+import React, { useState, useEffect } from 'react';
+import { Bill, LineItem } from '../backend';
+import { useEditBill, useGetUniqueProductNames } from '../hooks/useQueries';
 import AutocompleteInput from './AutocompleteInput';
+import { X, Plus, Trash2, CheckCircle, Loader2 } from 'lucide-react';
 
-const MAX_ROWS = 30;
-const UNIT_OPTIONS = ['SQM', 'RMT', 'PCS', 'KG', 'MTR', 'NOS', 'SET', 'JOB'];
-
-function nanosecondsToDateString(ns: bigint): string {
-  const ms = Number(ns) / 1_000_000;
-  const d = new Date(ms);
-  return d.toISOString().split('T')[0];
-}
-
-function dateToNanoseconds(dateStr: string): bigint {
-  const ms = new Date(dateStr).getTime();
-  return BigInt(ms) * BigInt(1_000_000);
-}
-
-interface RowData {
+interface LineItemForm {
+  srNo: number;
   hsnCode: string;
   productName: string;
   quantity: string;
   unit: string;
   rate: string;
+  totalAmount: number;
 }
 
 interface EditBillModalProps {
-  bill: Bill | null;
-  open: boolean;
+  bill: Bill;
   onClose: () => void;
 }
 
-export default function EditBillModal({ bill, open, onClose }: EditBillModalProps) {
-  const [partyName, setPartyName] = useState('');
+export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
+  const [partyName, setPartyName] = useState(bill.partyName);
+  const [invoiceNumber] = useState(bill.invoiceNumber);
   const [billDate, setBillDate] = useState('');
-  const [rows, setRows] = useState<RowData[]>([]);
-  const [error, setError] = useState('');
+  const [lineItems, setLineItems] = useState<LineItemForm[]>([]);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const editBillMutation = useEditBill();
-  const { data: partyNames = [] } = useGetPartyNames();
-  const { data: productNames = [] } = useGetProductNames();
+  const { data: productNames = [] } = useGetUniqueProductNames();
 
   useEffect(() => {
-    if (bill) {
-      setPartyName(bill.partyName);
-      setBillDate(nanosecondsToDateString(bill.billDate));
-      if (bill.lineItems.length > 0) {
-        setRows(bill.lineItems.map(item => ({
-          hsnCode: item.hsnCode,
-          productName: item.productName,
-          quantity: item.quantity.toString(),
-          unit: item.unit,
-          rate: item.rate.toString(),
-        })));
-      } else {
-        setRows([{ hsnCode: '', productName: '', quantity: '', unit: 'SQM', rate: '' }]);
-      }
-      setError('');
-    }
+    // Convert nanoseconds to milliseconds for date input
+    const dateMs = Number(bill.billDate / 1_000_000n);
+    const date = new Date(dateMs);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setBillDate(`${yyyy}-${mm}-${dd}`);
+
+    setLineItems(
+      bill.lineItems.map(item => ({
+        srNo: Number(item.srNo),
+        hsnCode: item.hsnCode,
+        productName: item.productName,
+        quantity: String(item.quantity),
+        unit: item.unit,
+        rate: String(item.rate),
+        totalAmount: item.totalAmount,
+      }))
+    );
   }, [bill]);
 
-  const updateRow = useCallback((idx: number, field: keyof RowData, value: string) => {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
-  }, []);
+  const updateLineItem = (index: number, field: keyof LineItemForm, value: string) => {
+    setLineItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      const qty = parseFloat(updated[index].quantity) || 0;
+      const rate = parseFloat(updated[index].rate) || 0;
+      updated[index].totalAmount = qty * rate;
+      return updated;
+    });
+  };
 
-  const addRow = () => {
-    if (rows.length < MAX_ROWS) {
-      setRows(prev => [...prev, { hsnCode: '', productName: '', quantity: '', unit: 'SQM', rate: '' }]);
+  const addLineItem = () => {
+    if (lineItems.length < 15) {
+      setLineItems(prev => [
+        ...prev,
+        { srNo: prev.length + 1, hsnCode: '', productName: '', quantity: '', unit: '', rate: '', totalAmount: 0 },
+      ]);
     }
   };
 
-  const removeRow = (idx: number) => {
-    if (rows.length > 1) setRows(prev => prev.filter((_, i) => i !== idx));
+  const removeLineItem = (index: number) => {
+    if (lineItems.length > 1) {
+      setLineItems(prev =>
+        prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, srNo: i + 1 }))
+      );
+    }
   };
 
-  const getRowTotal = (row: RowData): number => {
-    const qty = parseFloat(row.quantity) || 0;
-    const rate = parseFloat(row.rate) || 0;
-    return qty * rate;
-  };
-
-  const baseAmount = rows.reduce((sum, r) => sum + getRowTotal(r), 0);
+  const baseAmount = lineItems.reduce((sum, item) => sum + item.totalAmount, 0);
   const totalGst = baseAmount * 0.18;
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;
   const finalAmountRaw = baseAmount + totalGst;
-  const finalAmountRounded = Math.round(finalAmountRaw);
-  const roundOff = finalAmountRounded - finalAmountRaw;
+  const roundOff = Math.round(finalAmountRaw) - finalAmountRaw;
+  const finalAmount = Math.round(finalAmountRaw);
+
+  const formatINR = (amount: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bill) return;
-    setError('');
+    setErrorMessage('');
+    setSuccessMessage('');
 
-    if (!partyName.trim()) { setError('Party name is required.'); return; }
-    if (!billDate) { setError('Bill date is required.'); return; }
+    if (!partyName.trim()) { setErrorMessage('Party name is required.'); return; }
+    if (!billDate) { setErrorMessage('Bill date is required.'); return; }
 
-    const validRows = rows.filter(r => r.productName.trim() || r.hsnCode.trim() || r.quantity || r.rate);
-    if (validRows.length === 0) { setError('At least one line item is required.'); return; }
+    const validItems = lineItems.filter(
+      item => item.productName.trim() && parseFloat(item.quantity) > 0 && parseFloat(item.rate) > 0
+    );
+    if (validItems.length === 0) { setErrorMessage('At least one valid line item is required.'); return; }
+
+    const billDateMs = new Date(billDate).getTime();
+    const billDateNs = BigInt(billDateMs) * 1_000_000n;
+
+    const backendLineItems: LineItem[] = validItems.map((item, idx) => ({
+      srNo: BigInt(idx + 1),
+      hsnCode: item.hsnCode.trim(),
+      productName: item.productName.trim(),
+      quantity: parseFloat(item.quantity),
+      unit: item.unit.trim(),
+      rate: parseFloat(item.rate),
+      totalAmount: item.totalAmount,
+    }));
 
     try {
-      const lineItems: LineItem[] = validRows.map((r, i) => ({
-        srNo: BigInt(i + 1),
-        hsnCode: r.hsnCode.trim(),
-        productName: r.productName.trim(),
-        quantity: parseFloat(r.quantity) || 0,
-        unit: r.unit,
-        rate: parseFloat(r.rate) || 0,
-        totalAmount: getRowTotal(r),
-      }));
-
       await editBillMutation.mutateAsync({
-        invoiceNumber: bill.invoiceNumber,
+        invoiceNumber,
         billOp: {
           partyName: partyName.trim(),
-          invoiceNumber: bill.invoiceNumber,
-          billDate: dateToNanoseconds(billDate),
-          lineItems,
+          invoiceNumber,
+          billDate: billDateNs,
+          lineItems: backendLineItems,
         },
       });
-      onClose();
+      setSuccessMessage('✓ Bill updated successfully!');
+      setTimeout(() => onClose(), 1500);
     } catch (err: any) {
-      setError(err.message || 'Failed to update bill.');
+      setErrorMessage(err?.message || 'Failed to update bill. Please try again.');
     }
   };
 
-  const inputCls = 'w-full border border-navy-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-saffron-400 bg-white text-navy-900';
+  const inputStyle: React.CSSProperties = {
+    border: '1.5px solid #cbd5e1',
+    borderRadius: '6px',
+    padding: '8px 10px',
+    fontSize: '14px',
+    color: '#1a1a2e',
+    backgroundColor: '#ffffff',
+    outline: 'none',
+    width: '100%',
+    transition: 'border-color 0.15s ease',
+    boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#1e3a8a',
+    marginBottom: '4px',
+  };
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-navy-800">Edit Bill — {bill?.invoiceNumber}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Party & Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div
+      style={{
+        position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: '16px',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '900px',
+          maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        }}
+      >
+        {/* Modal Header */}
+        <div style={{ backgroundColor: '#1e3a8a', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '12px 12px 0 0' }}>
+          <h2 style={{ color: '#ffffff', fontSize: '17px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+            Edit Bill — {invoiceNumber}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '6px', padding: '6px', cursor: 'pointer', color: '#ffffff', display: 'flex', alignItems: 'center' }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
+          {/* Basic Info */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <label className="block text-xs font-semibold text-navy-700 mb-1">Party Name *</label>
-              <AutocompleteInput
+              <label style={labelStyle}>Party Name *</label>
+              <input
+                type="text"
                 value={partyName}
-                onChange={setPartyName}
-                suggestions={partyNames}
-                placeholder="Enter party name"
-                className={inputCls}
+                onChange={e => setPartyName(e.target.value)}
+                placeholder="Party name"
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-navy-700 mb-1">Bill Date *</label>
+              <label style={labelStyle}>Invoice Number</label>
+              <input
+                type="text"
+                value={invoiceNumber}
+                disabled
+                style={{ ...inputStyle, backgroundColor: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Bill Date *</label>
               <input
                 type="date"
                 value={billDate}
                 onChange={e => setBillDate(e.target.value)}
-                className={inputCls}
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
               />
             </div>
           </div>
 
           {/* Line Items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-navy-700">Line Items ({rows.length}/{MAX_ROWS})</h3>
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <h3 style={{ color: '#1e3a8a', fontSize: '15px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+                Line Items
+              </h3>
               <button
                 type="button"
-                onClick={addRow}
-                disabled={rows.length >= MAX_ROWS}
-                className="text-xs bg-saffron-500 hover:bg-saffron-600 text-white px-3 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                onClick={addLineItem}
+                disabled={lineItems.length >= 15}
+                style={{
+                  backgroundColor: lineItems.length >= 15 ? '#e2e8f0' : '#1e3a8a',
+                  color: lineItems.length >= 15 ? '#94a3b8' : '#ffffff',
+                  border: 'none', borderRadius: '6px', padding: '6px 12px',
+                  fontSize: '13px', fontWeight: 600,
+                  cursor: lineItems.length >= 15 ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                }}
               >
-                + Add Row
+                <Plus size={14} />
+                Add Item
               </button>
             </div>
-            <div className="overflow-x-auto rounded border border-navy-200">
-              <table className="w-full text-xs">
-                <thead className="bg-navy-800 text-white">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left w-8">#</th>
-                    <th className="px-2 py-1.5 text-left w-20">HSN Code</th>
-                    <th className="px-2 py-1.5 text-left min-w-[140px]">Product / Service</th>
-                    <th className="px-2 py-1.5 text-left w-16">Qty</th>
-                    <th className="px-2 py-1.5 text-left w-24">Unit</th>
-                    <th className="px-2 py-1.5 text-left w-20">Rate (₹)</th>
-                    <th className="px-2 py-1.5 text-right w-24">Amount (₹)</th>
-                    <th className="px-2 py-1.5 w-6"></th>
+
+            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1.5px solid #bfdbfe' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#1e3a8a' }}>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '50px' }}>Sr. No.</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'left', width: '110px' }}>HSN Code</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'left' }}>Product Name</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '80px' }}>Qty</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '80px' }}>Unit</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'right', width: '100px' }}>Rate (₹)</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'right', width: '110px' }}>Amount (₹)</th>
+                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '50px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-navy-50'}>
-                      <td className="px-2 py-1 text-navy-500">{idx + 1}</td>
-                      <td className="px-2 py-1">
+                  {lineItems.map((item, index) => (
+                    <tr key={index} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff', borderBottom: '1px solid #dbeafe' }}>
+                      <td style={{ padding: '6px 8px', textAlign: 'center', color: '#1e3a8a', fontWeight: 600, fontSize: '13px' }}>
+                        {item.srNo}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>
                         <input
                           type="text"
-                          value={row.hsnCode}
-                          onChange={e => updateRow(idx, 'hsnCode', e.target.value)}
-                          placeholder="HSN"
-                          className={inputCls}
+                          value={item.hsnCode}
+                          onChange={e => updateLineItem(index, 'hsnCode', e.target.value)}
+                          placeholder="HSN Code"
+                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px' }}
+                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
                         />
                       </td>
-                      <td className="px-2 py-1">
+                      <td style={{ padding: '6px 8px' }}>
                         <AutocompleteInput
-                          value={row.productName}
-                          onChange={v => updateRow(idx, 'productName', v)}
                           suggestions={productNames}
-                          placeholder="Product/Service"
-                          className={inputCls}
+                          value={item.productName}
+                          onValueChange={val => updateLineItem(index, 'productName', val)}
+                          onChange={e => updateLineItem(index, 'productName', e.target.value)}
+                          placeholder="Product Name"
+                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px' }}
                         />
                       </td>
-                      <td className="px-2 py-1">
+                      <td style={{ padding: '6px 8px' }}>
                         <input
                           type="number"
-                          value={row.quantity}
-                          onChange={e => updateRow(idx, 'quantity', e.target.value)}
-                          placeholder="0"
+                          value={item.quantity}
+                          onChange={e => updateLineItem(index, 'quantity', e.target.value)}
+                          placeholder="Qty"
                           min="0"
                           step="any"
-                          className={inputCls}
+                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'center' }}
+                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
                         />
                       </td>
-                      <td className="px-2 py-1">
-                        <div className="flex gap-1">
-                          <input
-                            type="text"
-                            value={row.unit}
-                            onChange={e => updateRow(idx, 'unit', e.target.value)}
-                            className={`${inputCls} w-14`}
-                          />
-                          <select
-                            value={UNIT_OPTIONS.includes(row.unit) ? row.unit : ''}
-                            onChange={e => { if (e.target.value) updateRow(idx, 'unit', e.target.value); }}
-                            className="border border-navy-200 rounded text-xs bg-white text-navy-700 px-1"
-                          >
-                            <option value="">▾</option>
-                            {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                          </select>
-                        </div>
+                      <td style={{ padding: '6px 8px' }}>
+                        <input
+                          type="text"
+                          value={item.unit}
+                          onChange={e => updateLineItem(index, 'unit', e.target.value)}
+                          placeholder="Unit"
+                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'center' }}
+                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
+                        />
                       </td>
-                      <td className="px-2 py-1">
+                      <td style={{ padding: '6px 8px' }}>
                         <input
                           type="number"
-                          value={row.rate}
-                          onChange={e => updateRow(idx, 'rate', e.target.value)}
-                          placeholder="0.00"
+                          value={item.rate}
+                          onChange={e => updateLineItem(index, 'rate', e.target.value)}
+                          placeholder="Rate"
                           min="0"
                           step="any"
-                          className={inputCls}
+                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'right' }}
+                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
                         />
                       </td>
-                      <td className="px-2 py-1 text-right font-medium text-navy-800">
-                        {formatCurrency(getRowTotal(row))}
+                      <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1a1a2e', fontWeight: 600, fontSize: '13px' }}>
+                        {formatINR(item.totalAmount)}
                       </td>
-                      <td className="px-2 py-1 text-center">
-                        {rows.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeRow(idx)}
-                            className="text-red-400 hover:text-red-600 font-bold text-base leading-none"
-                          >
-                            ×
-                          </button>
-                        )}
+                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(index)}
+                          disabled={lineItems.length === 1}
+                          style={{
+                            backgroundColor: 'transparent', border: 'none',
+                            cursor: lineItems.length === 1 ? 'not-allowed' : 'pointer',
+                            color: lineItems.length === 1 ? '#cbd5e1' : '#dc2626',
+                            padding: '4px', borderRadius: '4px',
+                            display: 'flex', alignItems: 'center',
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -276,59 +349,94 @@ export default function EditBillModal({ bill, open, onClose }: EditBillModalProp
           </div>
 
           {/* GST Summary */}
-          <div className="flex justify-end">
-            <div className="w-full max-w-xs space-y-1 text-sm">
-              <div className="flex justify-between text-navy-700">
-                <span>Base Amount</span>
-                <span className="font-medium">{formatCurrency(baseAmount)}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '8px', padding: '14px' }}>
+              <h4 style={{ color: '#1e3a8a', fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                GST Breakdown
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { label: 'Base Amount', value: formatINR(baseAmount) },
+                  { label: 'CGST (9%)', value: formatINR(cgst) },
+                  { label: 'SGST (9%)', value: formatINR(sgst) },
+                  { label: 'Total GST (18%)', value: formatINR(totalGst) },
+                  { label: 'Round Off', value: `${roundOff >= 0 ? '+' : ''}${roundOff.toFixed(2)}` },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                    <span style={{ color: '#475569' }}>{label}</span>
+                    <span style={{ color: '#1a1a2e', fontWeight: 500 }}>{value}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between text-navy-600">
-                <span>CGST (9%)</span>
-                <span>{formatCurrency(cgst)}</span>
-              </div>
-              <div className="flex justify-between text-navy-600">
-                <span>SGST (9%)</span>
-                <span>{formatCurrency(sgst)}</span>
-              </div>
-              {Math.abs(roundOff) > 0.001 && (
-                <div className="flex justify-between text-navy-500 text-xs">
-                  <span>Round-off</span>
-                  <span>{roundOff > 0 ? '+' : ''}{roundOff.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-navy-900 border-t border-navy-200 pt-1">
-                <span>Final Amount</span>
-                <span className="text-saffron-600">{formatCurrency(finalAmountRounded)}</span>
-              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#1e3a8a', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 500 }}>
+                Total Invoice Amount
+              </p>
+              <p style={{ color: '#ffffff', fontSize: '26px', fontWeight: 800, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
+                {formatINR(finalAmount)}
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', margin: '4px 0 0 0' }}>
+                Inclusive of 18% GST
+              </p>
             </div>
           </div>
 
-          {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+          {/* Messages */}
+          {errorMessage && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#dc2626', fontSize: '14px', fontWeight: 500 }}>
+              ⚠ {errorMessage}
+            </div>
+          )}
+          {successMessage && (
+            <div style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#16a34a', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle size={16} color="#16a34a" />
+              {successMessage}
+            </div>
+          )}
 
-          <DialogFooter>
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm border border-navy-300 rounded text-navy-700 hover:bg-navy-50 transition-colors"
+              style={{
+                backgroundColor: '#ffffff', color: '#1e3a8a',
+                border: '1.5px solid #1e3a8a', borderRadius: '8px',
+                padding: '10px 20px', fontSize: '14px', fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'Poppins, sans-serif',
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={editBillMutation.isPending}
-              className="px-6 py-2 text-sm bg-navy-800 hover:bg-navy-900 text-white rounded font-semibold transition-colors disabled:opacity-50 flex items-center gap-2"
+              style={{
+                backgroundColor: editBillMutation.isPending ? '#94a3b8' : '#1e3a8a',
+                color: '#ffffff', border: 'none', borderRadius: '8px',
+                padding: '10px 24px', fontSize: '14px', fontWeight: 700,
+                cursor: editBillMutation.isPending ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                fontFamily: 'Poppins, sans-serif',
+              }}
             >
-              {editBillMutation.isPending && (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
+              {editBillMutation.isPending ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={15} />
+                  Save Changes
+                </>
               )}
-              {editBillMutation.isPending ? 'Saving...' : 'Save Changes'}
             </button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

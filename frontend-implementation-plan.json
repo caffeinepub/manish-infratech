@@ -1,161 +1,217 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "GST on invoice, editable bill date, 30 line items, report downloads, and autocomplete suggestions",
+  "title": "Full app aesthetic redesign: MI logo, white+blue+red theme, black text, green saved state, invoice column label fixes",
   "requirements": [
     {
-      "id": "REQ-31",
-      "summary": "Display party GST number on printed invoice",
+      "id": "REQ-70",
+      "summary": "Redesign the main navigation header in Layout.tsx with professional MI logo, deep navy blue background, white bold 'MANISH INFRATECH' text, white nav links with red active/hover styling, and red logout button",
       "acceptanceCriteria": [
-        "When printing/viewing an invoice for a party that has a stored GST number, the GST number appears in the invoice header beneath the party name.",
-        "The label reads 'GST No:' followed by the GST number value.",
-        "When no GST number is stored for the party, the GST No line is not rendered in the print view."
+        "Navigation header has a deep navy blue background",
+        "MI logo badge (red square with bold white 'MI') is visible in the top-left of the header",
+        "'MANISH INFRATECH' text is visible in white bold typography next to the logo",
+        "All nav links are white with red hover/active styling",
+        "Logout button is red with white text",
+        "Header is consistent across Add Bill, Search Bills, Summary, Party Summary, and Company Report pages"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/InvoicePrintView.tsx",
+          "path": "frontend/src/components/Layout.tsx",
           "operation": "modify",
-          "description": "Add a query to fetch the party's GST number using the getPartyGstNumber backend method. Display the GST number beneath the party name in the invoice header section, formatted as 'GST No: <value>'. Conditionally render the GST line only when a non-empty GST number is returned from the backend."
+          "description": "Redesign the header component with a deep navy blue background (#1e3a8a or equivalent). Replace any existing logo/branding with an inline-rendered MI logo badge (a red square with bold white 'MI' text rendered as a styled div or span element, not an image file). Add 'MANISH INFRATECH' in white bold typography next to the logo. Style all navigation links (Add Bill, Search Bills, Summary, Party Summary) with white text and add red hover/active underline or highlight effects using Tailwind classes or inline styles. Style the Logout button with a red background (#dc2626 or equivalent) and white text. Ensure the header layout is consistent and responsive across desktop and mobile views."
         }
       ]
     },
     {
-      "id": "REQ-32",
-      "summary": "Add editable Bill Date field to bill forms",
+      "id": "REQ-71",
+      "summary": "Apply consistent white+blue+red color theme across all pages: warm off-white/light gray backgrounds, white cards with navy borders, deep navy primary buttons with white text, navy table headers with white text, alternating table rows, and navy focus rings on inputs",
       "acceptanceCriteria": [
-        "The Add Bill form shows a date input defaulting to today's date when opened.",
-        "The user can change the date to any value before saving.",
-        "The Edit Bill modal shows the existing bill date pre-filled in the date input.",
-        "The submitted bill date is correctly stored in the backend as a Unix timestamp in nanoseconds.",
-        "The bill date is visible in BillResultsTable, CompanyReportPage, and InvoicePrintView."
+        "Page backgrounds across all pages are off-white or light gray, not pure white",
+        "Card/form containers have white backgrounds with subtle navy borders or shadows",
+        "Primary buttons (Save Bill, Search, etc.) are deep navy with white text",
+        "Table headers are navy blue with white text",
+        "Table rows alternate white and light blue-gray",
+        "Input fields show a navy blue focus ring",
+        "Red is used as an accent color for highlights, badges, active states, and error indicators"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/AddBillForm.tsx",
+          "path": "frontend/src/index.css",
           "operation": "modify",
-          "description": "Add a date input field labeled 'Bill Date' that defaults to today's date. Allow the user to change the date before submission. Convert the selected date to a Unix timestamp in nanoseconds and include it in the billDate field of the BillOperation payload when calling the addBill backend method."
+          "description": "Update the global CSS custom properties and base styles to implement the white+blue+red theme. Set page backgrounds to a warm off-white or light gray (#f8f9fa or #f5f5f5). Define CSS custom properties for deep navy blue primary color (#1e3a8a), red accent color (#dc2626), light blue-gray for table row alternation (#eff6ff or #f1f5f9), and white (#ffffff). Add global styles for input focus rings using navy blue. Ensure the color tokens are applied consistently and override any existing light/dark theme tokens that conflict with the new design."
         },
         {
-          "path": "frontend/src/components/EditBillModal.tsx",
+          "path": "frontend/tailwind.config.js",
           "operation": "modify",
-          "description": "Add a date input field labeled 'Bill Date' that pre-fills with the existing bill's billDate (converted from nanoseconds timestamp to a date). Allow the user to change the date. Convert the selected date to a Unix timestamp in nanoseconds and include it in the billDate field of the updated BillOperation payload when calling the editBill backend method."
+          "description": "Update Tailwind configuration to define semantic color tokens matching the white+blue+red theme. Add or override primary color to deep navy blue (#1e3a8a), accent/destructive to red (#dc2626), background to warm off-white (#f8f9fa), and card to white (#ffffff) with navy border. Configure focus ring colors to use navy blue. Ensure these tokens are used throughout the application for buttons, borders, backgrounds, and interactive elements."
+        },
+        {
+          "path": "frontend/src/pages/AddBillPage.tsx",
+          "operation": "modify",
+          "description": "Apply the white+blue+red theme to the AddBillPage. Ensure the page background is off-white or light gray. Style the card container with a white background and subtle navy border or shadow. Verify that the 'Save Bill' button rendered by AddBillForm uses deep navy background with white text (this may be handled in AddBillForm.tsx)."
+        },
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Apply theme styling to AddBillForm. Ensure the 'Save Bill' primary button has a deep navy blue background with white text. Apply navy blue focus rings to all input fields (party name, invoice number, date, line item inputs). Style any secondary or outline buttons with white background, navy border, and navy text. Ensure form labels and input borders use the new color scheme. Line item table styling will be addressed separately in REQ-74."
+        },
+        {
+          "path": "frontend/src/pages/SearchBillsPage.tsx",
+          "operation": "modify",
+          "description": "Apply the white+blue+red theme to SearchBillsPage. Set the page background to off-white or light gray. Style the search card container with a white background and navy border. Ensure the 'Search' button uses deep navy background with white text. Apply navy focus rings to search input fields."
         },
         {
           "path": "frontend/src/components/BillResultsTable.tsx",
           "operation": "modify",
-          "description": "Add a 'Bill Date' column that displays each bill's billDate (converted from nanoseconds timestamp to a readable date format). Position the column after the Invoice No. column."
+          "description": "Apply theme styling to the BillResultsTable. Set table header background to deep navy blue with white text for column headers. Apply alternating row colors: white and light blue-gray (#eff6ff or #f1f5f9). Style action buttons (Edit, Print, Delete) consistently with the theme (e.g., navy outline buttons). Use red accent for delete or warning indicators. Ensure pagination controls match the theme."
+        },
+        {
+          "path": "frontend/src/pages/SummaryPage.tsx",
+          "operation": "modify",
+          "description": "Apply the white+blue+red theme to SummaryPage. Set page background to off-white or light gray. Style the summary cards (SummaryCard component) and filter/date range card with white backgrounds and navy borders. Ensure the 'Apply Filter' and 'Download CSV' buttons use deep navy background with white text. Ensure the embedded bill list table matches the theme (navy headers, alternating rows)."
+        },
+        {
+          "path": "frontend/src/components/SummaryCard.tsx",
+          "operation": "modify",
+          "description": "Apply theme styling to SummaryCard. Ensure the 2x2 grid of metric cards uses white backgrounds with subtle navy borders or shadows. Use navy or red accents for icons or highlights as appropriate."
+        },
+        {
+          "path": "frontend/src/pages/PartySummaryPage.tsx",
+          "operation": "modify",
+          "description": "Apply the white+blue+red theme to PartySummaryPage. Set page background to off-white or light gray. Style the date range filter card with white background and navy border. Ensure the 'Apply Filter' button uses deep navy background with white text. Apply theme styling to the party summary table: navy headers with white text, alternating white and light blue-gray rows, navy focus rings on inline GST number input fields, and themed save buttons."
         },
         {
           "path": "frontend/src/pages/CompanyReportPage.tsx",
           "operation": "modify",
-          "description": "Ensure the bills table displays the billDate column for each bill. Convert the nanoseconds timestamp to a readable date format for display."
+          "description": "Apply the white+blue+red theme to CompanyReportPage. Set page background to off-white or light gray. Style the party selection and date range filter card with white background and navy border. Ensure the 'Generate Report' and 'Download CSV' buttons use deep navy background with white text. Apply theme styling to the report table: navy headers with white text, alternating row colors."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Apply theme styling to EditBillModal. Ensure the modal background overlay and content card use the white+blue+red theme. Style the 'Save Changes' button with deep navy background and white text. Apply navy focus rings to all input fields. Style the 'Cancel' button as a secondary/outline button with white background, navy border, and navy text. Line item table styling will be addressed separately in REQ-74."
+        }
+      ]
+    },
+    {
+      "id": "REQ-72",
+      "summary": "Change all body text, form labels, table cell text, headings, and placeholder text to black or very dark gray throughout the app, ensuring no white text appears on light backgrounds",
+      "acceptanceCriteria": [
+        "All form labels in AddBillForm and EditBillModal are black/dark text",
+        "All table cell text in BillResultsTable, PartySummaryPage, CompanyReportPage, and SummaryPage is black/dark",
+        "All page headings and section titles are black/dark",
+        "Input field text values are black/dark",
+        "No white text appears on light/white backgrounds anywhere in the app",
+        "'Save Bill' button label is clearly visible (white on navy background)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Update global text color styles to ensure all body text, form labels, input text, and table cell text defaults to black or very dark gray (#1a1a1a or #212529). Override any existing CSS custom properties that set text to white or light colors on light backgrounds. Ensure headings (h1, h2, h3, etc.) also use black/dark text. Add global input placeholder styles with dark gray color. White text should only be used on intentionally dark/colored backgrounds (e.g., navy buttons, red buttons, dark headers)."
+        },
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Ensure all form labels (Party Name, Invoice Number, Bill Date, Amount Paid, line item labels) are styled with black or very dark gray text. Verify input field values and placeholders use black/dark text. Check that the 'Save Bill' button label is white text on the navy background (already handled in REQ-71 but verify visibility). Remove any white text classes or styles applied to labels or static text within the form."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Ensure all form labels and headings in the EditBillModal are styled with black or very dark gray text. Verify input field values and placeholders use black/dark text. Ensure success/save confirmation messages (addressed in REQ-73) are not white. Remove any white text classes or styles applied to labels, headings, or static text within the modal."
+        },
+        {
+          "path": "frontend/src/components/BillResultsTable.tsx",
+          "operation": "modify",
+          "description": "Ensure all table cell text (invoice numbers, party names, amounts, dates, payment status) is styled with black or very dark gray text. Table headers should remain white text on navy background (handled in REQ-71). Remove any white or light text classes applied to table cell content."
+        },
+        {
+          "path": "frontend/src/pages/SearchBillsPage.tsx",
+          "operation": "modify",
+          "description": "Ensure page heading ('Search Bills' or equivalent) and all labels are styled with black or very dark gray text. Verify search input field text and placeholders are black/dark."
+        },
+        {
+          "path": "frontend/src/pages/SummaryPage.tsx",
+          "operation": "modify",
+          "description": "Ensure page heading, section titles, filter labels, and all static text are styled with black or very dark gray. Verify table cell text in the embedded bill list is black/dark (may be inherited from BillResultsTable or a local table component)."
+        },
+        {
+          "path": "frontend/src/components/SummaryCard.tsx",
+          "operation": "modify",
+          "description": "Ensure metric card labels and values are styled with black or very dark gray text. Remove any white or light text classes from the card content."
+        },
+        {
+          "path": "frontend/src/pages/PartySummaryPage.tsx",
+          "operation": "modify",
+          "description": "Ensure page heading, filter labels, table cell text (party names, total billed, total paid, bill counts, GST numbers) are styled with black or very dark gray. Verify inline input fields for GST numbers use black/dark text."
+        },
+        {
+          "path": "frontend/src/pages/CompanyReportPage.tsx",
+          "operation": "modify",
+          "description": "Ensure page heading, filter labels, table cell text, and summary text (total billed, total received, total pending) are styled with black or very dark gray."
+        },
+        {
+          "path": "frontend/src/pages/AddBillPage.tsx",
+          "operation": "modify",
+          "description": "Ensure any page heading or instructional text on AddBillPage is styled with black or very dark gray text."
+        }
+      ]
+    },
+    {
+      "id": "REQ-73",
+      "summary": "Display all success/saved confirmation messages and toast notifications in green text or with a green background badge, including bill saved, edit saved, and GST number saved confirmations",
+      "acceptanceCriteria": [
+        "Bill saved confirmation message is displayed in green",
+        "Edit bill saved confirmation is displayed in green",
+        "GST number saved confirmation is displayed in green",
+        "No success message is rendered in white text on a white or light background"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Update the bill saved success message/toast to use green text (#16a34a or #22c55e) or a green background badge. If the success message is currently displayed in white or another non-visible color, change it to green. Ensure the message is clearly visible against the page background. Consider using a green check icon or badge to reinforce the success state."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Update the edit bill saved success message/toast to use green text or a green background badge. If the success message is currently displayed in white, change it to green. Ensure the message is clearly visible against the modal background."
+        },
+        {
+          "path": "frontend/src/pages/PartySummaryPage.tsx",
+          "operation": "modify",
+          "description": "Update the GST number saved confirmation message/toast to use green text or a green background badge. If the success message is currently displayed in white, change it to green. Ensure the message is clearly visible against the page background. If there are other success confirmations on this page, apply the same green styling."
+        }
+      ]
+    },
+    {
+      "id": "REQ-74",
+      "summary": "Fix line item column headers and input placeholders in AddBillForm and EditBillModal to clearly label Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), and Amount (₹) with bold dark text, and ensure the printed invoice also shows these headers",
+      "acceptanceCriteria": [
+        "Line item table in AddBillForm has visible column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)",
+        "Line item table in EditBillModal has the same visible column headers",
+        "Qty input has placeholder 'Qty'",
+        "Unit input has placeholder 'Unit'",
+        "Rate input has placeholder 'Rate'",
+        "HSN Code input has placeholder 'HSN Code'",
+        "Product Name input has placeholder 'Product Name'",
+        "Column headers are in dark/black text and clearly visible against the table header background",
+        "The printed invoice (InvoicePrintView) also displays the same column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Add or update the line item table to include a visible header row with the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Ensure the header row uses a navy blue background (matching the theme from REQ-71) with white text, or a light background with dark text if that provides better clarity. For each line item input row, ensure the input fields have matching placeholders: HSN Code input placeholder='HSN Code', Product Name input placeholder='Product Name', Qty input placeholder='Qty', Unit input placeholder='Unit', Rate input placeholder='Rate'. The Amount column should display the calculated value clearly. Ensure the header is always visible and not hidden or styled with white-on-white."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Add or update the line item table in the edit modal to include a visible header row with the same column labels as AddBillForm: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Apply consistent styling (navy background with white text or light background with dark text). Ensure each input field has the appropriate placeholder as specified in REQ-74 acceptance criteria. Ensure the header is always visible and not hidden."
         },
         {
           "path": "frontend/src/components/InvoicePrintView.tsx",
           "operation": "modify",
-          "description": "Display the bill's billDate in the invoice header section (converted from nanoseconds timestamp to a readable date format), labeled as 'Bill Date' or 'Invoice Date'."
-        }
-      ]
-    },
-    {
-      "id": "REQ-33",
-      "summary": "Increase maximum line items from 10 to 30",
-      "acceptanceCriteria": [
-        "The Add Bill form allows adding up to 30 line item rows.",
-        "The Edit Bill modal allows up to 30 line item rows.",
-        "The 'Add Row' button is disabled or hidden once 30 rows exist.",
-        "The backend accepts and persists bills with up to 30 line items without error."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AddBillForm.tsx",
-          "operation": "modify",
-          "description": "Change the maximum allowed line items from 10 to 30. Disable or hide the 'Add Row' button when 30 rows are present. Ensure the form can handle and submit up to 30 line items to the backend."
-        },
-        {
-          "path": "frontend/src/components/EditBillModal.tsx",
-          "operation": "modify",
-          "description": "Change the maximum allowed line items from 10 to 30. Disable or hide the 'Add Row' button when 30 rows are present. Ensure the modal can handle and submit up to 30 line items when editing a bill."
-        }
-      ]
-    },
-    {
-      "id": "REQ-34",
-      "summary": "Add 'Download Report' button on SummaryPage for total CSV export",
-      "acceptanceCriteria": [
-        "A 'Download Report' button is visible on the SummaryPage.",
-        "Clicking it triggers a browser download of a CSV file.",
-        "The CSV contains the specified columns for all bills (filtered by active date range if set).",
-        "The filename is descriptive, e.g. 'manish-infratech-total-report.csv'."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/SummaryPage.tsx",
-          "operation": "modify",
-          "description": "Add a 'Download Report' button that fetches all bills (applying the active date-range filter if set) via getAllBills or getPartySummaryByDateRange. Generate a CSV file with columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. For each party, fetch the GST number using getPartyGstNumber. Use browser-native CSV generation (no external libraries) and trigger a download with filename 'manish-infratech-total-report.csv'."
-        }
-      ]
-    },
-    {
-      "id": "REQ-35",
-      "summary": "Add 'Download Report' button on CompanyReportPage for party CSV export",
-      "acceptanceCriteria": [
-        "A 'Download Report' button is visible on the CompanyReportPage.",
-        "Clicking it triggers a browser download of a CSV file named after the party (e.g. 'party-name-report.csv').",
-        "The CSV contains the specified columns for all bills shown (filtered by active date range if set).",
-        "The party name and GST number appear in the first two rows of the CSV as a header block."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/CompanyReportPage.tsx",
-          "operation": "modify",
-          "description": "Add a 'Download Report' button that generates a CSV export of the current party's report. Include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Fetch the party's GST number using getPartyGstNumber and include the party name and GST number in the first two rows as a header block. Use browser-native CSV generation and trigger a download with filename '<party-name>-report.csv'."
-        }
-      ]
-    },
-    {
-      "id": "REQ-36",
-      "summary": "Implement autocomplete suggestions for Party Name input",
-      "acceptanceCriteria": [
-        "Typing in the Party Name field shows a filtered dropdown of previously used party names.",
-        "The suggestions are fetched from the backend (unique party names from existing bills or party profiles).",
-        "Selecting a suggestion from the dropdown populates the Party Name field.",
-        "The dropdown closes when a selection is made or the user clicks away.",
-        "If no suggestions match the current input, the dropdown is hidden."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AddBillForm.tsx",
-          "operation": "modify",
-          "description": "Replace the Party Name text input with an autocomplete input that fetches party name suggestions from the backend using the getPartyNames method. As the user types, filter and display matching party names in a dropdown. When a suggestion is selected, populate the Party Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
-        },
-        {
-          "path": "frontend/src/components/EditBillModal.tsx",
-          "operation": "modify",
-          "description": "Replace the Party Name text input with an autocomplete input that fetches party name suggestions from the backend using the getPartyNames method. As the user types, filter and display matching party names in a dropdown. When a suggestion is selected, populate the Party Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
-        }
-      ]
-    },
-    {
-      "id": "REQ-37",
-      "summary": "Implement autocomplete suggestions for Product Name input in line items",
-      "acceptanceCriteria": [
-        "Typing in any Product Name cell within the line items table shows a filtered dropdown of previously used product names.",
-        "The suggestions are sourced from all unique product names stored across existing bill line items.",
-        "Selecting a suggestion fills in the Product Name field for that row.",
-        "The dropdown closes when a selection is made or focus leaves the field.",
-        "The backend exposes a query to return all unique product names for the owner, or the frontend derives them from fetched bill data."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AddBillForm.tsx",
-          "operation": "modify",
-          "description": "Replace each Product Name text input in the line items table with an autocomplete input. Fetch product name suggestions from the backend using the getProductNames method. As the user types in any Product Name cell, filter and display matching product names in a dropdown. When a suggestion is selected, populate that specific row's Product Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
-        },
-        {
-          "path": "frontend/src/components/EditBillModal.tsx",
-          "operation": "modify",
-          "description": "Replace each Product Name text input in the line items table with an autocomplete input. Fetch product name suggestions from the backend using the getProductNames method. As the user types in any Product Name cell, filter and display matching product names in a dropdown. When a suggestion is selected, populate that specific row's Product Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
+          "description": "Update the printed invoice line items table to include the same visible column headers: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Ensure the headers are displayed in a clear, readable format suitable for printing. Do not change the existing red header band, white body, or red accent GST summary borders in the print view as per the BuildRequest constraints. Only update the line items table headers within the invoice body."
         }
       ]
     }

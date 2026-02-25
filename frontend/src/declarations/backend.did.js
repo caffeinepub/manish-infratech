@@ -87,19 +87,19 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getPartyGstNumber' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
-  'getPartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
   'getPartySummary' : IDL.Func([], [IDL.Vec(PartySummary)], ['query']),
   'getPartySummaryByDateRange' : IDL.Func(
       [IDL.Int, IDL.Int],
       [IDL.Vec(PartySummary)],
       ['query'],
     ),
-  'getProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
   'getProfitLossSummary' : IDL.Func(
       [IDL.Int, IDL.Int],
       [ProfitLossSummary],
       ['query'],
     ),
+  'getUniquePartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+  'getUniqueProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -192,19 +192,19 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getPartyGstNumber' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
-    'getPartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'getPartySummary' : IDL.Func([], [IDL.Vec(PartySummary)], ['query']),
     'getPartySummaryByDateRange' : IDL.Func(
         [IDL.Int, IDL.Int],
         [IDL.Vec(PartySummary)],
         ['query'],
       ),
-    'getProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'getProfitLossSummary' : IDL.Func(
         [IDL.Int, IDL.Int],
         [ProfitLossSummary],
         ['query'],
       ),
+    'getUniquePartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'getUniqueProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],

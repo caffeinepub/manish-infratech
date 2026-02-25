@@ -1,77 +1,84 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface AutocompleteInputProps {
-  value: string;
-  onChange: (value: string) => void;
+interface AutocompleteInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   suggestions: string[];
-  placeholder?: string;
-  className?: string;
-  onBlur?: () => void;
-  disabled?: boolean;
+  onValueChange?: (value: string) => void;
 }
 
 export default function AutocompleteInput({
+  suggestions,
+  onValueChange,
   value,
   onChange,
-  suggestions,
-  placeholder,
-  className = '',
-  onBlur,
-  disabled,
+  ...props
 }: AutocompleteInputProps) {
   const [open, setOpen] = useState(false);
   const [filtered, setFiltered] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const currentValue = (value as string) ?? '';
+
   useEffect(() => {
-    if (value.trim() === '') {
-      setFiltered([]);
-      setOpen(false);
-      return;
+    if (currentValue.trim().length === 0) {
+      setFiltered(suggestions.slice(0, 10));
+    } else {
+      const lower = currentValue.toLowerCase();
+      setFiltered(
+        suggestions.filter(s => s.toLowerCase().includes(lower)).slice(0, 10)
+      );
     }
-    const lower = value.toLowerCase();
-    const matches = suggestions.filter(s => s.toLowerCase().includes(lower) && s !== value);
-    setFiltered(matches);
-    setOpen(matches.length > 0);
-  }, [value, suggestions]);
+  }, [currentValue, suggestions]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
-        onBlur?.();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onBlur]);
+  }, []);
 
-  const handleSelect = (s: string) => {
-    onChange(s);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange?.(e);
+    onValueChange?.(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (suggestion: string) => {
+    onValueChange?.(suggestion);
+    // Simulate a change event
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value'
+    )?.set;
+    if (containerRef.current) {
+      const input = containerRef.current.querySelector('input');
+      if (input && nativeInputValueSetter) {
+        nativeInputValueSetter.call(input, suggestion);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
     setOpen(false);
   };
 
   return (
     <div ref={containerRef} className="relative w-full">
       <input
-        type="text"
+        {...props}
         value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={className}
-        onFocus={() => {
-          if (filtered.length > 0) setOpen(true);
-        }}
+        onChange={handleInputChange}
+        onFocus={() => setOpen(true)}
         autoComplete="off"
+        className={`w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition ${props.className ?? ''}`}
       />
-      {open && (
-        <ul className="absolute z-50 left-0 right-0 top-full mt-0.5 bg-white border border-navy-200 rounded shadow-lg max-h-48 overflow-y-auto text-sm">
-          {filtered.map(s => (
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-50 w-full bg-card border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+          {filtered.map((s, i) => (
             <li
-              key={s}
+              key={i}
               onMouseDown={() => handleSelect(s)}
-              className="px-3 py-1.5 cursor-pointer hover:bg-saffron-50 text-navy-800"
+              className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
             >
               {s}
             </li>

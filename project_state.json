@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 15,
-  "summary": "Manish Infratech billing/invoice management web app with authentication (single user access). Features: add bills with party name, invoice number, amount; auto-calculate CGST (9%) + SGST (9%) + round-off; save bills to database; search bills by party/invoice; view revenue and GST summary; download/print invoices as PDF. Bills support multi-line items (up to 10 rows) with Sr. No., HSN Code, Product Name, Quantity, Unit (e.g. SQM/RMT/PCS), Rate per unit, and computed item total amount. New features: party-wise individual summary, payment tracking, GST number per company, party-wise detailed report, date filtering, and Profit & Loss section.",
+  "projectStateVersion": 29,
+  "summary": "Manish Infratech billing/invoice management web app. Clean rebuild from version 5 base. Authentication: simple username/PIN login (MANISHINFRATECH / 1752), session in localStorage; bills stored in stable canister storage (persists across logouts/upgrades). Features: Add/Edit bills with party name (autocomplete from saved names), unique invoice number, auto-populated alterable bill date, up to 15 line item rows (Sr. No., HSN Code, Product Name, Qty, Unit [free-text only], Rate, computed Amount); live GST summary (CGST 9%, SGST 9%, round-off, final amount, amount paid, pending); amount paid & pending per bill; no duplicate invoice numbers. Invoice print: red header band, white body, MI logo (red/white) top-left, MANISH INFRATECH in red, 'TAX INVOICE' label, party GST No. in header, line items table, GST summary, amount in words (print/share only), 'Thank you for your business' footer. Search by company name or bill number shows all bills of that company. Party Summary page: all companies with totals, GST No. (editable), date filter, View Report. Company Report page: per-party summary cards, date filter, bill table with Print per row, CSV download. Summary/P&L page: overall financials, Profit & Loss section, date filter, CSV download (authenticated only). Data stored in stable backend storage with correct nanosecond↔millisecond date conversion.",
   "architectural_notes": [
     "Single-user access control: protect all routes behind authentication",
     "Bills stored with fields: party, invoice, amount, cgst, sgst, gst, roundoff, final",
@@ -9,13 +9,20 @@
     "Bills must store a date field (bill/invoice date) to support date-range filtering in reports",
     "Party GST numbers stored in a separate party/company profile or alongside the bill; must appear in invoice print and party summary",
     "Bill line items must store: srNo, hsnCode, productName, quantity (Float), unit (Text, e.g. SQM/RMT/PCS), rate (Float), amount (computed as quantity × rate), gst (18% of amount)",
-    "Line items support up to 30 rows per bill (increased from 10)",
-    "Party name and product name inputs must support autocomplete suggestions based on previously used values"
+    "Party name and product name inputs must support autocomplete suggestions based on previously used values",
+    "Authentication uses simple username/password: username = MANISHINFRATECH, PIN = 1752 (replaces Internet Identity)",
+    "Line items support up to 15 rows per bill (revised from 30)",
+    "Unit field in line items must be a plain free-text input with no dropdown or autocomplete suggestions"
   ],
   "known_issues": [
-    "Authentication bug: app shows 'Access Denied' message but still grants access instead of blocking unauthorized users"
+    "Authentication bug: app shows 'Access Denied' message but still grants access instead of blocking unauthorized users",
+    "Blank page shown on Billing and Summary pages — app not rendering after version 8 deploy",
+    "Actor not available error on bill add — bills cannot be saved; version 10 deploy broke canister actor connection",
+    "Old bills appear deleted/missing after version 10 deploy — possible data loss or canister reinstall issue",
+    "Date shows 1970 on bills — likely caused by incorrect Unix timestamp unit (nanoseconds being passed where milliseconds expected, or vice versa) in date display logic",
+    "App text appears in pure white on white/light backgrounds — text is invisible on Add Bill, Summary, and other pages; must be changed to black"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-implement-internet-identity-authentication-so-the-app-is-only-accessible-by-the-authenticated-owner-on-first-login-register-the-caller-s-principal-as-the-sole-authorized-owner-on-all-subsequent-visits-gate-access-behind-that-stored-principal-any-other-principal-must-be-rejected-and-shown-an-unauthorized-message",
@@ -232,6 +239,254 @@
         "REQ-37"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-replace-internet-identity-authentication-with-a-simple-hardcoded-username-pin-login-screen-the-only-valid-credentials-are-username-manishinfratech-and-pin-1752-any-other-credential-combination-must-be-rejected-with-a-clear-error-message-on-successful-login-grant-access-to-the-full-app-on-failure-show-an-inline-error-store-the-session-in-localstorage-so-the-user-stays-logged-in-on-page-refresh-until-they-explicitly-log-out",
+      "title": "Replace Internet Identity authentication with a simple hardcoded username/PIN login screen. The only valid credentials are username: MANISHINFRATECH and PIN: 1752. Any other credential combination must be rejected with a clear error message. On successful login, grant access to the full app. On failure, show an inline error. Store the session in localStorage so the user stays logged in on page refresh until they explicitly log out.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-add-bill-form-ui-and-the-overall-billing-interface-to-match-the-version-6-layout-exactly-do-not-add-any-new-ui-elements-beyond-what-is-explicitly-listed-in-req-40-and-req-41-remove-any-ui-additions-introduced-after-version-6-that-are-not-part-of-the-permitted-additions",
+      "title": "Revert the Add Bill form UI and the overall billing interface to match the version 6 layout exactly. Do not add any new UI elements beyond what is explicitly listed in REQ-40 and REQ-41. Remove any UI additions introduced after version 6 that are not part of the permitted additions.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-add-bill-form-and-edit-bill-modal-add-a-bill-date-field-that-auto-populates-with-today-s-date-when-the-form-opens-the-user-must-be-able-to-manually-change-the-date-before-submitting-the-selected-date-must-be-submitted-to-the-backend-as-the-bill-s-billdate-unix-timestamp-in-nanoseconds-on-edit-the-field-must-be-pre-filled-with-the-existing-bill-s-billdate-this-is-one-of-the-only-permitted-additions-to-the-version-6-layout",
+      "title": "In the Add Bill form and Edit Bill modal, add a Bill Date field that auto-populates with today's date when the form opens. The user must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate. This is one of the only permitted additions to the version 6 layout.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-set-the-maximum-number-of-line-item-rows-per-bill-to-15-in-both-addbillform-and-editbillmodal-the-add-row-button-must-be-disabled-once-15-rows-are-present-the-backend-must-accept-up-to-15-line-items-per-bill",
+      "title": "Set the maximum number of line item rows per bill to 15 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 15 rows are present. The backend must accept up to 15 line items per bill.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-display-the-party-s-gst-number-on-the-printed-invoice-invoiceprintview-in-the-invoice-header-section-beneath-the-party-name-formatted-as-gst-no-value-if-no-gst-number-is-stored-for-the-party-omit-the-line-do-not-change-any-other-aspect-of-the-print-layout-this-is-the-only-permitted-addition-to-the-print-format",
+      "title": "Display the party's GST number on the printed invoice (InvoicePrintView) in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line. Do not change any other aspect of the print layout — this is the only permitted addition to the print format.",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restrict-the-summary-report-csv-download-button-on-the-summarypage-so-it-is-only-accessible-and-functional-when-the-user-is-logged-in-with-the-valid-owner-credentials-manishinfratech-1752-if-the-session-is-not-active-the-download-button-must-not-be-rendered-or-must-be-disabled-unauthenticated-or-unauthorized-users-must-not-be-able-to-trigger-a-report-download",
+      "title": "Restrict the Summary Report CSV download button on the SummaryPage so it is only accessible and functional when the user is logged in with the valid owner credentials (MANISHINFRATECH / 1752). If the session is not active, the download button must not be rendered or must be disabled. Unauthenticated or unauthorized users must not be able to trigger a report download.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-diagnose-and-fix-the-blank-page-rendering-failure-on-the-billing-add-bill-and-summary-pages-introduced-after-the-version-8-deploy-investigate-likely-causes-including-broken-imports-or-missing-exports-in-addbillpage-summarypage-or-their-child-components-runtime-errors-from-undefined-variables-or-failed-hook-calls-e-g-usequeries-usesimpleauth-useactor-tanstack-router-route-definition-mismatches-and-any-typescript-or-vite-build-errors-that-silently-produce-an-empty-render-ensure-all-pages-render-their-full-content-correctly-after-login-with-credentials-manishinfratech-1752",
+      "title": "Diagnose and fix the blank page rendering failure on the Billing (Add Bill) and Summary pages introduced after the version 8 deploy. Investigate likely causes including: broken imports or missing exports in AddBillPage, SummaryPage, or their child components; runtime errors from undefined variables or failed hook calls (e.g. useQueries, useSimpleAuth, useActor); TanStack Router route definition mismatches; and any TypeScript or Vite build errors that silently produce an empty render. Ensure all pages render their full content correctly after login with credentials MANISHINFRATECH / 1752.",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-invoice-print-view-invoiceprintview-and-the-add-bill-edit-bill-form-visual-styling-to-the-version-5-6-red-and-white-color-theme-the-print-layout-must-use-a-red-header-band-white-body-red-accent-borders-on-the-gst-summary-table-and-red-typography-for-the-company-name-manish-infratech-the-mi-logo-red-and-white-square-with-bold-mi-initials-must-appear-in-the-top-left-corner-of-the-printed-invoice-header-no-structural-changes-to-the-existing-column-layout-sr-no-hsn-code-product-name-qty-unit-rate-amount-or-gst-summary-section-are-permitted-only-the-color-theme-and-logo-rendering-are-being-changed",
+      "title": "Revert the invoice print view (InvoicePrintView) and the Add Bill / Edit Bill form visual styling to the version 5/6 red-and-white color theme. The print layout must use a red header band, white body, red accent borders on the GST summary table, and red typography for the company name 'MANISH INFRATECH'. The MI logo (red and white square with bold 'MI' initials) must appear in the top-left corner of the printed invoice header. No structural changes to the existing column layout (Sr. No., HSN Code, Product Name, Qty, Unit, Rate ₹, Amount ₹) or GST summary section are permitted — only the color theme and logo rendering are being changed.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-unit-field-in-the-line-item-rows-in-addbillform-and-editbillmodal-with-a-plain-free-text-input-remove-any-dropdown-datalist-or-autocomplete-suggestion-mechanism-from-the-unit-field-the-user-must-be-able-to-type-any-arbitrary-unit-value-e-g-sqm-rmt-pcs-kg-or-any-custom-text-without-being-constrained-to-a-predefined-list",
+      "title": "Replace the Unit field in the line item rows in AddBillForm and EditBillModal with a plain free-text input. Remove any dropdown, datalist, or autocomplete suggestion mechanism from the Unit field. The user must be able to type any arbitrary unit value (e.g. SQM, RMT, PCS, KG, or any custom text) without being constrained to a predefined list.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-diagnose-and-fix-the-actor-not-available-error-that-prevents-bills-from-being-saved-audit-the-frontend-actor-initialization-in-useactor-ts-and-usequeries-ts-to-ensure-the-backend-canister-actor-is-correctly-instantiated-and-available-before-any-mutation-addbill-editbill-is-called-verify-that-the-actor-idl-candid-interface-matches-the-current-backend-method-signatures-exactly-including-addbill-editbill-deletebill-getallbills-searchbills-and-all-report-summary-methods-fix-any-mismatch-stale-import-or-race-condition-that-causes-the-actor-to-be-undefined-or-unavailable-at-call-time",
+      "title": "Diagnose and fix the 'actor not available' error that prevents bills from being saved. Audit the frontend actor initialization in useActor.ts and useQueries.ts to ensure the backend canister actor is correctly instantiated and available before any mutation (addBill, editBill) is called. Verify that the actor IDL/candid interface matches the current backend method signatures exactly — including addBill, editBill, deleteBill, getAllBills, searchBills, and all report/summary methods. Fix any mismatch, stale import, or race condition that causes the actor to be undefined or unavailable at call time.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-frontend-gracefully-handles-the-actor-initialization-lifecycle-show-a-loading-state-while-the-actor-is-being-set-up-and-display-a-clear-user-friendly-error-message-e-g-unable-to-connect-to-server-please-refresh-and-try-again-if-the-actor-fails-to-initialize-rather-than-silently-failing-or-showing-a-blank-page-the-addbillform-save-bill-button-must-be-disabled-and-show-a-loading-indicator-while-the-actor-is-not-yet-available",
+      "title": "Ensure the frontend gracefully handles the actor initialization lifecycle: show a loading state while the actor is being set up, and display a clear user-friendly error message (e.g. 'Unable to connect to server. Please refresh and try again.') if the actor fails to initialize, rather than silently failing or showing a blank page. The AddBillForm 'Save Bill' button must be disabled and show a loading indicator while the actor is not yet available.",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-invoice-print-view-invoiceprintview-and-the-add-bill-edit-bill-form-visual-styling-to-the-exact-version-5-6-red-and-white-color-theme-the-print-layout-must-use-a-red-header-band-at-the-top-white-body-background-red-accent-borders-on-the-gst-summary-table-and-red-typography-for-the-company-name-manish-infratech-the-mi-logo-red-and-white-square-with-bold-mi-initials-must-appear-in-the-top-left-corner-of-the-printed-invoice-header-the-line-item-table-columns-must-be-sr-no-hsn-code-product-name-qty-unit-rate-amount-the-gst-summary-section-base-amount-cgst-9-sgst-9-round-off-final-amount-must-appear-below-the-item-table-unchanged-no-structural-changes-to-the-column-layout-are-permitted-only-the-color-theme-and-logo-rendering-are-being-restored",
+      "title": "Restore the invoice print view (InvoicePrintView) and the Add Bill / Edit Bill form visual styling to the exact version 5/6 red-and-white color theme. The print layout must use: a red header band at the top, white body background, red accent borders on the GST summary table, and red typography for the company name 'MANISH INFRATECH'. The MI logo (red and white square with bold 'MI' initials) must appear in the top-left corner of the printed invoice header. The line item table columns must be: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹). The GST summary section (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) must appear below the item table unchanged. No structural changes to the column layout are permitted — only the color theme and logo rendering are being restored.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-login-authorization-gate-in-authguard-so-that-the-app-is-only-accessible-after-successfully-logging-in-with-the-hardcoded-credentials-username-manishinfratech-pin-1752-if-no-valid-session-exists-in-localstorage-show-the-simpleloginscreen-and-block-all-app-content-if-an-invalid-session-or-no-session-is-detected-the-user-must-be-redirected-to-the-login-screen-the-logout-button-in-the-layout-header-must-clear-the-localstorage-session-and-return-the-user-to-the-login-screen-no-app-routes-navigation-or-data-must-be-accessible-without-a-valid-authenticated-session",
+      "title": "Restore the login/authorization gate in AuthGuard so that the app is only accessible after successfully logging in with the hardcoded credentials (username: MANISHINFRATECH, PIN: 1752). If no valid session exists in localStorage, show the SimpleLoginScreen and block all app content. If an invalid session or no session is detected, the user must be redirected to the login screen. The logout button in the Layout header must clear the localStorage session and return the user to the login screen. No app routes, navigation, or data must be accessible without a valid authenticated session.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-bill-date-display-bug-that-causes-dates-to-show-as-1970-the-root-cause-is-an-incorrect-timestamp-unit-conversion-bill-dates-are-stored-as-unix-timestamps-in-nanoseconds-on-the-backend-but-the-frontend-is-likely-passing-them-directly-to-javascript-s-date-constructor-which-expects-milliseconds-audit-all-date-display-locations-billresultstable-companyreportpage-invoiceprintview-editbillmodal-addbillform-summarypage-and-ensure-that-nanosecond-timestamps-are-divided-by-1-000-000-before-being-passed-to-the-date-constructor-also-verify-that-when-the-user-selects-a-date-in-addbillform-and-editbillmodal-the-value-is-correctly-multiplied-by-1-000-000-before-being-submitted-to-the-backend-as-a-nanosecond-timestamp",
+      "title": "Fix the bill date display bug that causes dates to show as '1970'. The root cause is an incorrect timestamp unit conversion — bill dates are stored as Unix timestamps in nanoseconds on the backend, but the frontend is likely passing them directly to JavaScript's Date constructor (which expects milliseconds). Audit all date display locations (BillResultsTable, CompanyReportPage, InvoicePrintView, EditBillModal, AddBillForm, SummaryPage) and ensure that nanosecond timestamps are divided by 1,000,000 before being passed to the Date constructor. Also verify that when the user selects a date in AddBillForm and EditBillModal, the value is correctly multiplied by 1,000,000 before being submitted to the backend as a nanosecond timestamp.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-simple-hardcoded-username-pin-authentication-username-manishinfratech-pin-1752-the-simpleloginscreen-must-show-an-inline-error-for-invalid-credentials-on-success-store-a-session-token-in-localstorage-so-the-user-remains-logged-in-across-page-refreshes-the-authguard-must-block-all-app-routes-and-content-when-no-valid-session-exists-showing-only-the-simpleloginscreen-the-logout-button-in-the-layout-header-must-clear-the-localstorage-session-and-return-the-user-to-the-login-screen-immediately-no-app-routes-navigation-or-data-must-be-accessible-without-a-valid-authenticated-session-any-browser-user-who-knows-the-credentials-can-log-in-bills-are-shared-and-stored-globally-not-per-user",
+      "title": "Implement simple hardcoded username/PIN authentication: username MANISHINFRATECH, PIN 1752. The SimpleLoginScreen must show an inline error for invalid credentials. On success, store a session token in localStorage so the user remains logged in across page refreshes. The AuthGuard must block all app routes and content when no valid session exists — showing only the SimpleLoginScreen. The logout button in the Layout header must clear the localStorage session and return the user to the login screen immediately. No app routes, navigation, or data must be accessible without a valid authenticated session. Any browser user who knows the credentials can log in; bills are shared and stored globally (not per-user).",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-full-add-bill-form-with-the-following-fields-party-name-text-input-with-autocomplete-suggestions-from-previously-saved-party-names-invoice-number-unique-reject-duplicates-with-inline-error-bill-date-date-picker-auto-populated-with-today-s-date-user-alterable-submitted-to-backend-as-nanosecond-unix-timestamp-and-a-line-item-table-with-up-to-15-rows-each-line-item-row-must-contain-sr-no-auto-incremented-read-only-hsn-code-text-input-product-name-text-input-with-autocomplete-suggestions-from-previously-used-product-names-quantity-numeric-input-unit-plain-free-text-input-no-dropdown-or-suggestion-rate-numeric-input-and-computed-amount-quantity-rate-read-only-an-add-row-button-adds-rows-up-to-the-15-row-maximum-disabled-at-15-rows-each-row-has-a-remove-button-below-the-table-a-live-gst-summary-must-show-base-amount-sum-of-all-line-item-amounts-cgst-9-sgst-9-round-off-final-amount-amount-paid-input-default-0-and-pending-amount-final-amount-minus-amount-paid",
+      "title": "Implement the full Add Bill form with the following fields: Party Name (text input with autocomplete suggestions from previously saved party names), Invoice Number (unique — reject duplicates with inline error), Bill Date (date picker auto-populated with today's date, user-alterable, submitted to backend as nanosecond Unix timestamp), and a line item table with up to 15 rows. Each line item row must contain: Sr. No. (auto-incremented, read-only), HSN Code (text input), Product Name (text input with autocomplete suggestions from previously used product names), Quantity (numeric input), Unit (plain free-text input — no dropdown or suggestion), Rate (numeric input), and computed Amount (Quantity × Rate, read-only). An 'Add Row' button adds rows up to the 15-row maximum (disabled at 15 rows). Each row has a remove button. Below the table, a live GST summary must show: Base Amount (sum of all line item amounts), CGST 9%, SGST 9%, Round-off, Final Amount, Amount Paid (₹) input (default 0), and Pending Amount (Final Amount minus Amount Paid).",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-search-bills-listing-page-where-the-owner-can-type-a-company-name-or-invoice-number-keyword-and-retrieve-all-bills-matching-that-keyword-substring-match-on-partyname-or-invoicenumber-display-results-in-billresultstable-with-columns-invoice-no-party-name-bill-date-base-amount-final-amount-amount-paid-pending-and-action-buttons-edit-opens-editbillmodal-print-navigates-to-print-route-delete-confirmation-dialog-then-removes-bill",
+      "title": "Implement the Search / Bills listing page where the owner can type a company name or invoice number keyword and retrieve all bills matching that keyword (substring match on partyName or invoiceNumber). Display results in BillResultsTable with columns: Invoice No., Party Name, Bill Date, Base Amount (₹), Final Amount (₹), Amount Paid (₹), Pending (₹), and action buttons: Edit (opens EditBillModal), Print (navigates to print route), Delete (confirmation dialog then removes bill).",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-edit-bill-modal-editbillmodal-that-pre-fills-all-fields-from-the-existing-bill-party-name-with-autocomplete-invoice-number-bill-date-converted-from-nanoseconds-to-a-date-input-value-line-items-table-up-to-15-rows-pre-populated-with-existing-items-including-quantity-unit-rate-amount-paid-and-live-gst-summary-on-save-submit-the-updated-bill-to-the-backend-via-editbill-the-modal-must-validate-for-duplicate-invoice-numbers-if-the-invoice-number-is-changed",
+      "title": "Implement the Edit Bill modal (EditBillModal) that pre-fills all fields from the existing bill: Party Name (with autocomplete), Invoice Number, Bill Date (converted from nanoseconds to a date input value), line items table (up to 15 rows, pre-populated with existing items including quantity, unit, rate), Amount Paid, and live GST summary. On save, submit the updated bill to the backend via editBill. The modal must validate for duplicate invoice numbers if the invoice number is changed.",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-tax-invoice-print-view-invoiceprintview-the-printed-invoice-must-display-tax-invoice-prominently-as-the-document-title-show-the-mi-logo-red-and-white-square-with-bold-mi-initials-in-the-top-left-corner-of-the-header-show-manish-infratech-in-large-red-typography-in-the-header-show-the-party-name-and-if-available-their-gst-number-below-the-party-name-formatted-as-gst-no-value-show-invoice-number-and-bill-date-correctly-converted-from-nanoseconds-to-a-readable-date-include-a-line-items-table-with-columns-sr-no-hsn-code-product-name-qty-unit-rate-amount-include-a-gst-summary-section-below-the-table-showing-base-amount-cgst-9-sgst-9-round-off-and-final-amount-show-the-final-amount-in-words-e-g-rupees-twelve-thousand-five-hundred-only-on-the-printed-shared-view-only-include-a-thank-you-for-your-business-footer-the-layout-must-use-a-red-header-band-white-body-background-and-red-accent-borders-on-the-gst-summary-table-the-overall-design-must-be-aesthetic-and-professional-to-attract-customers",
+      "title": "Implement the Tax Invoice print view (InvoicePrintView). The printed invoice must: display 'TAX INVOICE' prominently as the document title; show the MI logo (red and white square with bold 'MI' initials) in the top-left corner of the header; show 'MANISH INFRATECH' in large red typography in the header; show the party name and, if available, their GST number below the party name (formatted as 'GST No: <value>'); show invoice number and bill date (correctly converted from nanoseconds to a readable date); include a line items table with columns: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹); include a GST summary section below the table showing Base Amount, CGST 9%, SGST 9%, Round-off, and Final Amount; show the Final Amount in words (e.g. 'Rupees Twelve Thousand Five Hundred Only') on the printed/shared view only; include a 'Thank you for your business' footer. The layout must use a red header band, white body background, and red accent borders on the GST summary table. The overall design must be aesthetic and professional to attract customers.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-party-summary-page-route-party-summary-showing-a-table-of-all-parties-with-columns-party-name-gst-number-total-billed-total-paid-total-pending-bill-count-include-a-date-range-filter-from-to-date-inputs-that-re-fetches-data-via-getpartysummarybydaterange-each-row-must-have-a-view-report-button-navigating-to-the-company-report-page-for-that-party-and-an-inline-or-modal-ui-to-add-edit-the-party-s-gst-number-via-savepartygstnumber-apply-the-red-saffron-theme-consistently",
+      "title": "Implement the Party Summary page (route: /party-summary) showing a table of all parties with columns: Party Name, GST Number, Total Billed (₹), Total Paid (₹), Total Pending (₹), Bill Count. Include a date range filter (From / To date inputs) that re-fetches data via getPartySummaryByDateRange. Each row must have a 'View Report' button navigating to the Company Report page for that party, and an inline or modal UI to add/edit the party's GST number via savePartyGstNumber. Apply the red/saffron theme consistently.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-company-report-page-route-company-report-accepting-a-party-name-as-a-url-query-parameter-display-at-the-top-party-name-and-gst-number-summary-cards-for-total-service-amount-total-payment-received-and-total-pending-a-date-range-filter-from-to-that-re-fetches-via-getcompanyreport-a-bill-table-with-columns-invoice-no-date-base-amount-final-amount-amount-paid-pending-and-a-print-button-per-row-and-a-download-report-csv-button-that-exports-invoice-no-bill-date-base-amount-final-amount-amount-paid-pending-for-the-current-date-range-apply-the-red-saffron-theme-consistently",
+      "title": "Implement the Company Report page (route: /company-report) accepting a party name as a URL query parameter. Display at the top: party name and GST number; summary cards for Total Service Amount, Total Payment Received, and Total Pending; a date range filter (From / To) that re-fetches via getCompanyReport; a bill table with columns: Invoice No., Date, Base Amount (₹), Final Amount (₹), Amount Paid (₹), Pending (₹), and a Print button per row; and a 'Download Report' CSV button that exports Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending for the current date range. Apply the red/saffron theme consistently.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-summary-p-l-page-showing-overall-financial-totals-total-revenue-cgst-total-sgst-total-total-gst-a-profit-loss-section-with-total-billed-total-received-total-outstanding-and-a-color-indicator-green-if-outstanding-0-amber-if-outstanding-0-a-date-range-filter-from-to-for-all-data-a-list-of-all-bills-billresultstable-with-amount-paid-and-pending-columns-edit-print-delete-actions-and-a-download-report-csv-button-visible-only-to-authenticated-users-exporting-columns-invoice-no-party-name-gst-no-bill-date-base-amount-cgst-sgst-round-off-final-amount-amount-paid-pending-amount-the-download-button-must-be-hidden-or-disabled-when-no-valid-session-is-active",
+      "title": "Implement the Summary / P&L page showing: overall financial totals (Total Revenue, CGST total, SGST total, Total GST); a Profit & Loss section with Total Billed, Total Received, Total Outstanding, and a color indicator (green if outstanding ≤ 0, amber if outstanding > 0); a date range filter (From / To) for all data; a list of all bills (BillResultsTable) with Amount Paid and Pending columns, Edit, Print, Delete actions; and a 'Download Report' CSV button (visible only to authenticated users) exporting columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. The download button must be hidden or disabled when no valid session is active.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-all-bill-date-display-bugs-across-the-entire-app-bill-dates-are-stored-as-nanosecond-unix-timestamps-in-the-backend-every-location-that-displays-a-date-billresultstable-companyreportpage-invoiceprintview-editbillmodal-addbillform-summarypage-partysummarypage-must-divide-the-nanosecond-timestamp-by-1-000-000-before-passing-it-to-javascript-s-date-constructor-every-location-that-reads-a-date-from-an-input-and-submits-it-to-the-backend-must-multiply-the-millisecond-value-by-1-000-000-before-sending-it-dates-must-display-in-a-human-readable-format-e-g-dd-mm-yyyy-everywhere",
+      "title": "Fix all bill date display bugs across the entire app. Bill dates are stored as nanosecond Unix timestamps in the backend. Every location that displays a date (BillResultsTable, CompanyReportPage, InvoicePrintView, EditBillModal, AddBillForm, SummaryPage, PartySummaryPage) must divide the nanosecond timestamp by 1,000,000 before passing it to JavaScript's Date constructor. Every location that reads a date from an input and submits it to the backend must multiply the millisecond value by 1,000,000 before sending it. Dates must display in a human-readable format (e.g. DD/MM/YYYY) everywhere.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-frontend-actor-initialization-lifecycle-is-handled-gracefully-while-the-icp-backend-actor-is-being-set-up-show-a-loading-spinner-on-data-dependent-pages-if-the-actor-fails-to-initialize-display-a-clear-error-message-unable-to-connect-to-server-please-refresh-and-try-again-the-save-bill-button-in-addbillform-must-be-disabled-and-show-a-loading-indicator-while-the-actor-is-not-yet-available-fix-any-idl-candid-interface-mismatches-between-the-frontend-actor-declaration-and-the-current-backend-method-signatures-so-that-all-canister-calls-succeed",
+      "title": "Ensure the frontend actor initialization lifecycle is handled gracefully. While the ICP backend actor is being set up, show a loading spinner on data-dependent pages. If the actor fails to initialize, display a clear error message: 'Unable to connect to server. Please refresh and try again.' The Save Bill button in AddBillForm must be disabled and show a loading indicator while the actor is not yet available. Fix any IDL/candid interface mismatches between the frontend actor declaration and the current backend method signatures so that all canister calls succeed.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-amount-in-words-conversion-to-the-invoiceprintview-only-below-the-final-amount-in-the-gst-summary-section-display-the-final-amount-spelled-out-in-words-in-indian-currency-format-e-g-rupees-twelve-thousand-five-hundred-and-fifty-only-this-text-must-appear-only-in-the-print-share-view-and-must-not-appear-anywhere-in-the-on-screen-form-views",
+      "title": "Add amount-in-words conversion to the InvoicePrintView only. Below the Final Amount in the GST summary section, display the Final Amount spelled out in words in Indian currency format (e.g. 'Rupees Twelve Thousand Five Hundred and Fifty Only'). This text must appear only in the print/share view and must not appear anywhere in the on-screen form views.",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-main-navigation-layout-tsx-to-include-links-to-all-pages-add-bill-home-billing-search-bills-summary-party-summary-and-a-logout-button-apply-the-red-white-mi-branding-theme-consistently-across-the-navigation-header-the-mi-logo-and-manish-infratech-text-must-be-visible-in-the-header-the-logout-button-must-clear-localstorage-and-redirect-to-the-login-screen",
+      "title": "Update the main navigation (Layout.tsx) to include links to all pages: Add Bill (home/billing), Search Bills, Summary, Party Summary, and a Logout button. Apply the red/white MI branding theme consistently across the navigation header. The MI logo and 'MANISH INFRATECH' text must be visible in the header. The Logout button must clear localStorage and redirect to the login screen.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-redesign-the-main-navigation-header-layout-tsx-with-a-professional-aesthetic-use-a-deep-navy-blue-background-display-the-mi-logo-a-bold-square-badge-with-mi-initials-in-white-on-a-red-background-on-the-left-followed-by-manish-infratech-in-white-bold-typography-navigation-links-add-bill-search-bills-summary-party-summary-must-be-styled-with-white-text-and-a-red-active-hover-underline-or-highlight-the-logout-button-must-be-styled-with-a-red-background-and-white-text-apply-this-header-consistently-across-all-pages",
+      "title": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-consistent-white-blue-red-color-theme-across-every-page-of-the-app-add-bill-search-bills-summary-party-summary-company-report-page-backgrounds-must-be-warm-off-white-or-light-gray-not-pure-white-section-cards-and-form-containers-must-have-white-backgrounds-with-a-subtle-navy-blue-border-or-shadow-primary-action-buttons-save-bill-search-apply-filter-download-report-must-use-a-deep-navy-blue-background-with-white-text-secondary-outline-buttons-must-use-a-white-background-with-navy-blue-border-and-text-table-headers-must-use-a-deep-navy-blue-background-with-white-text-table-rows-must-alternate-between-white-and-a-very-light-blue-gray-all-input-fields-must-have-a-navy-blue-focus-ring",
+      "title": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
+      "reqIds": [
+        "REQ-71"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-change-all-body-text-form-labels-table-cell-text-heading-text-and-placeholder-text-throughout-the-entire-app-to-use-black-or-very-dark-gray-1a1a1a-or-equivalent-instead-of-white-no-text-in-the-main-content-area-forms-tables-cards-page-bodies-should-be-white-white-text-is-only-acceptable-on-intentionally-dark-colored-backgrounds-such-as-the-navigation-header-navy-button-backgrounds-or-red-button-backgrounds",
+      "title": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
+      "reqIds": [
+        "REQ-72"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-display-all-success-saved-confirmation-messages-and-success-toast-notifications-in-green-text-or-with-a-green-background-badge-this-includes-the-bill-saved-confirmation-after-submitting-addbillform-the-edit-saved-confirmation-after-editbillmodal-submission-the-gst-number-saved-confirmation-on-partysummarypage-and-any-other-success-state-currently-rendered-in-white-or-another-non-visible-color",
+      "title": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
+      "reqIds": [
+        "REQ-73"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-line-item-column-headers-and-input-field-placeholders-in-addbillform-and-editbillmodal-so-that-each-column-is-clearly-and-visibly-labeled-the-table-header-row-must-show-the-following-column-labels-in-bold-dark-text-sr-no-hsn-code-product-name-qty-unit-rate-amount-each-input-field-within-a-row-must-have-a-matching-placeholder-e-g-placeholder-qty-for-the-quantity-input-placeholder-unit-for-the-unit-input-placeholder-rate-for-the-rate-input-the-computed-amount-column-must-display-the-calculated-value-clearly-ensure-column-headers-are-always-visible-and-not-hidden-or-white-on-white",
+      "title": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
+      "reqIds": [
+        "REQ-74"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -424,12 +679,6 @@
       "status": "pending"
     },
     {
-      "id": "AR-34",
-      "summary": "Increase maximum line item rows per bill from 10 to 30",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
       "id": "AR-35",
       "summary": "Add downloadable report for overall/total summary (all parties, all bills) as a downloadable file (PDF or CSV)",
       "reqIds": [],
@@ -450,6 +699,138 @@
     {
       "id": "AR-38",
       "summary": "Auto-suggest previously used product names in the product name input field within line items when adding/editing a bill",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Replace Internet Identity authentication with a simple username/password login: username = MANISHINFRATECH, PIN = 1752. Only this credential pair can access the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Revert invoice/billing interface to version 6 layout — do not add extra UI elements; only permitted additions are: GST number in print, auto-populated but alterable date field, and row count change.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Change maximum line item rows per bill from 30 to 15 (user revised from previous request of 30).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Restrict summary report download to authenticated owner only — no unauthenticated or unauthorized user should be able to download the report.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Audit the backend main.mo actor for any compilation errors, missing method signatures, or type mismatches introduced in version 8 (e.g. changes to LineItem, Bill, or PartyProfile types, or updated API method signatures for addBill, editBill, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary) that could cause frontend actor calls to fail silently and result in blank page renders. Fix any such backend issues so all canister API calls resolve correctly.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "Revert billing and invoice print format to version 5/6 style: red and white color theme with Manish Infratech MI logo displayed prominently.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Make the Unit field in line items a free-text open input (no dropdown suggestions) — user should be able to type any unit value freely.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Audit the backend main.mo actor for any compilation errors, type mismatches, or signature inconsistencies introduced in version 10 that could cause the canister to fail to deploy correctly or expose incorrect method signatures. Verify that the LineItem type (srNo, hsnCode, productName, quantity, unit, rate, totalAmount), Bill type (including billDate, amountPaid, pendingAmount, items), PartyProfile type, and all public method signatures (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames) are correct and consistent. Fix any backend compilation errors so the canister deploys and responds to all frontend calls correctly.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "Investigate and fix the missing/deleted old bills issue reported after version 10 deploy. The most likely cause is a canister reinstall (instead of upgrade) that wiped stable storage, or a data migration failure. Ensure the backend actor uses stable variables for all persistent data (bills map, partyProfiles map, owner principal/auth state) so that data survives canister upgrades. Add or verify the presence of preupgrade and postupgrade system hooks in main.mo that correctly serialize and deserialize all stable state. If the canister was previously reinstalled and data is genuinely lost from the canister, document this clearly — but ensure all future upgrades preserve data without loss.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "Fix date bug: bill date showing 1970 (likely Unix timestamp conversion issue — nanoseconds vs milliseconds). Ensure date displays correctly throughout the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-51",
+      "summary": "Amount in words on printed/shared invoice only (not on on-screen form view)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-52",
+      "summary": "Printed invoice must be labeled 'TAX INVOICE' prominently",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-53",
+      "summary": "Add 'Thank you for your business' footer/watermark on printed invoice",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-54",
+      "summary": "Search by company name or bill number must return all bills of that company (not just exact match)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-55",
+      "summary": "Bills must be stored in stable canister storage and persist permanently across logouts and canister upgrades — logging out only clears the local browser session, never bill data",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-57",
+      "summary": "Ensure all bill data is stored in stable Motoko variables in the backend canister so that bills persist permanently across canister upgrades and redeployments. Implement preupgrade and postupgrade system hooks that correctly serialize and deserialize the bills map, partyProfiles map, and owner/auth state into stable storage. Logging out must only clear the browser localStorage session — it must never affect stored bill data. Bills created by any authenticated user session must be visible to all subsequent authenticated sessions.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-59",
+      "summary": "Update the backend Bill data model to store: partyName (Text), invoiceNumber (Text, unique per owner), billDate (Int, nanosecond Unix timestamp), amountPaid (Float, default 0.0), pendingAmount (Float, computed as finalAmount − amountPaid), and an items array of up to 15 LineItem records. Each LineItem must store: srNo (Nat), hsnCode (Text), productName (Text), quantity (Float), unit (Text), rate (Float), totalAmount (Float, quantity × rate). baseAmount is the sum of all item totalAmounts. Compute CGST (9%), SGST (9%), totalGST, roundOff (rounded integer − raw total), and finalAmount from baseAmount. Expose backend methods: addBill, editBill, deleteBill, getAllBills, searchBills (by party name or invoice number prefix/substring), getUniquePartyNames, getUniqueProductNames. All bill mutations are owner-only (validated via the hardcoded session — backend should accept calls from any principal since auth is frontend-only, but must not expose data to unauthenticated canister calls).",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-66",
+      "summary": "Add backend API methods: getPartySummaryByDateRange(from: Int, to: Int) returning party summary records (partyName, gstNumber, totalBilled, totalPaid, totalPending, billCount) filtered by billDate range; getCompanyReport(partyName: Text, from: Int, to: Int) returning totalServiceAmount, totalReceived, totalPending, and bills array sorted by billDate descending; getProfitLossSummary(from: Int, to: Int) returning totalBilled, totalReceived, totalOutstanding; savePartyGstNumber(partyName: Text, gstNumber: Text) upsert; getPartyGstNumber(partyName: Text) returning stored GST number or empty string.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-67",
+      "summary": "Full app aesthetic redesign: MI logo (white+blue+red theme) in navigation header, all text changed to black (not white) throughout app, success/saved text in green, dark navy header with white/red accents, applied consistently across all pages (Add Bill, Search, Summary, Party Summary, Company Report)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-68",
+      "summary": "Fix invoice line item column headers/placeholders so it's clear which field is for Quantity, Unit, and Price/Rate — ensure all column labels are visible and correctly labeled in both the Add Bill form and the printed invoice",
       "reqIds": [],
       "status": "pending"
     }

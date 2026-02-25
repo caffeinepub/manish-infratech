@@ -164,11 +164,11 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCompanyReport(partyName: string, from: bigint, to: bigint): Promise<CompanyReport>;
     getPartyGstNumber(partyName: string): Promise<string>;
-    getPartyNames(): Promise<Array<string>>;
     getPartySummary(): Promise<Array<PartySummary>>;
     getPartySummaryByDateRange(from: bigint, to: bigint): Promise<Array<PartySummary>>;
-    getProductNames(): Promise<Array<string>>;
     getProfitLossSummary(from: bigint, to: bigint): Promise<ProfitLossSummary>;
+    getUniquePartyNames(): Promise<Array<string>>;
+    getUniqueProductNames(): Promise<Array<string>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
@@ -376,20 +376,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getPartyNames(): Promise<Array<string>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getPartyNames();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getPartyNames();
-            return result;
-        }
-    }
     async getPartySummary(): Promise<Array<PartySummary>> {
         if (this.processError) {
             try {
@@ -418,20 +404,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getProductNames(): Promise<Array<string>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.getProductNames();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getProductNames();
-            return result;
-        }
-    }
     async getProfitLossSummary(arg0: bigint, arg1: bigint): Promise<ProfitLossSummary> {
         if (this.processError) {
             try {
@@ -443,6 +415,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getProfitLossSummary(arg0, arg1);
+            return result;
+        }
+    }
+    async getUniquePartyNames(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUniquePartyNames();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUniquePartyNames();
+            return result;
+        }
+    }
+    async getUniqueProductNames(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUniqueProductNames();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUniqueProductNames();
             return result;
         }
     }

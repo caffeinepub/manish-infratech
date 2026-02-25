@@ -81,14 +81,14 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCompanyReport' : ActorMethod<[string, bigint, bigint], CompanyReport>,
   'getPartyGstNumber' : ActorMethod<[string], string>,
-  'getPartyNames' : ActorMethod<[], Array<string>>,
   'getPartySummary' : ActorMethod<[], Array<PartySummary>>,
   'getPartySummaryByDateRange' : ActorMethod<
     [bigint, bigint],
     Array<PartySummary>
   >,
-  'getProductNames' : ActorMethod<[], Array<string>>,
   'getProfitLossSummary' : ActorMethod<[bigint, bigint], ProfitLossSummary>,
+  'getUniquePartyNames' : ActorMethod<[], Array<string>>,
+  'getUniqueProductNames' : ActorMethod<[], Array<string>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
