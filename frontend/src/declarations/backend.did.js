@@ -19,6 +19,7 @@ export const LineItem = IDL.Record({
 });
 export const BillOperation = IDL.Record({
   'lineItems' : IDL.Vec(LineItem),
+  'amountPaid' : IDL.Float64,
   'billDate' : IDL.Int,
   'invoiceNumber' : IDL.Text,
   'partyName' : IDL.Text,
@@ -124,6 +125,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const BillOperation = IDL.Record({
     'lineItems' : IDL.Vec(LineItem),
+    'amountPaid' : IDL.Float64,
     'billDate' : IDL.Int,
     'invoiceNumber' : IDL.Text,
     'partyName' : IDL.Text,

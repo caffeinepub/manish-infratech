@@ -1,311 +1,231 @@
 import React, { useState } from 'react';
+import { Loader2, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import { useGetPartySummaryByDateRange, useSavePartyGstNumber } from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
 import { useNavigate } from '@tanstack/react-router';
-import { Users, Filter, Save, CheckCircle, Loader2, ExternalLink } from 'lucide-react';
+import { formatINR } from '../utils/formatCurrency';
 
-const formatINR = (amount: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+function dateToNano(date: string): bigint {
+  return BigInt(new Date(date).getTime()) * 1_000_000n;
+}
+
+function getDefaultDateRange() {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return {
+    from: from.toISOString().split('T')[0],
+    to: to.toISOString().split('T')[0],
+  };
+}
 
 export default function PartySummaryPage() {
+  const defaults = getDefaultDateRange();
+  const [fromDate, setFromDate] = useState(defaults.from);
+  const [toDate, setToDate] = useState(defaults.to);
+  const [editingGst, setEditingGst] = useState<string | null>(null);
+  const [gstValue, setGstValue] = useState('');
+
   const navigate = useNavigate();
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [appliedFrom, setAppliedFrom] = useState('');
-  const [appliedTo, setAppliedTo] = useState('');
-  const [gstEdits, setGstEdits] = useState<Record<string, string>>({});
-  const [savedGst, setSavedGst] = useState<Record<string, boolean>>({});
+  const { actor, isFetching: actorFetching } = useActor();
+  const {
+    data: summaries = [],
+    isLoading,
+    isError: summaryError,
+  } = useGetPartySummaryByDateRange(dateToNano(fromDate), dateToNano(toDate));
+  const saveGst = useSavePartyGstNumber();
 
-  const saveGstMutation = useSavePartyGstNumber();
+  const isConnecting = actorFetching && !actor;
+  const hasError = (!actorFetching && !actor) || summaryError;
 
-  const fromNs = appliedFrom ? BigInt(new Date(appliedFrom).getTime()) * 1_000_000n : 0n;
-  const toNs = appliedTo ? BigInt(new Date(appliedTo).getTime() + 86400000) * 1_000_000n : BigInt(Date.now() + 86400000 * 365) * 1_000_000n;
-
-  const { data: partySummaries = [], isLoading } = useGetPartySummaryByDateRange(fromNs, toNs);
-
-  const handleApplyFilter = () => {
-    setAppliedFrom(fromDate);
-    setAppliedTo(toDate);
-  };
-
-  const handleClearFilter = () => {
-    setFromDate('');
-    setToDate('');
-    setAppliedFrom('');
-    setAppliedTo('');
-  };
+  const totals = summaries.reduce(
+    (acc, s) => ({
+      billed: acc.billed + s.totalBilled,
+      paid: acc.paid + s.totalPaid,
+      pending: acc.pending + s.totalPending,
+    }),
+    { billed: 0, paid: 0, pending: 0 }
+  );
 
   const handleSaveGst = async (partyName: string) => {
-    const gstNumber = gstEdits[partyName] ?? '';
-    try {
-      await saveGstMutation.mutateAsync({ partyName, gstNumber });
-      setSavedGst(prev => ({ ...prev, [partyName]: true }));
-      setTimeout(() => setSavedGst(prev => ({ ...prev, [partyName]: false })), 2500);
-    } catch (err) {
-      console.error('Failed to save GST number', err);
-    }
+    await saveGst.mutateAsync({ partyName, gstNumber: gstValue });
+    setEditingGst(null);
+    setGstValue('');
   };
 
-  const inputStyle: React.CSSProperties = {
-    border: '1.5px solid #cbd5e1',
-    borderRadius: '6px',
-    padding: '8px 10px',
-    fontSize: '14px',
-    color: '#1a1a2e',
-    backgroundColor: '#ffffff',
-    outline: 'none',
-  };
+  if (isConnecting) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
+        <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm">Connecting to server…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#1e3a8a',
-    marginBottom: '4px',
-  };
-
-  const totalBilled = partySummaries.reduce((sum, p) => sum + p.totalBilled, 0);
-  const totalPaid = partySummaries.reduce((sum, p) => sum + p.totalPaid, 0);
-  const totalPending = partySummaries.reduce((sum, p) => sum + p.totalPending, 0);
+  if (hasError) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <p className="text-base font-semibold text-foreground">
+            Unable to connect to server. Please refresh and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {/* Page Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-          <div style={{ backgroundColor: '#1e3a8a', borderRadius: '8px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Users size={20} color="#ffffff" />
-          </div>
-          <div>
-            <h1 style={{ color: '#1e3a8a', fontSize: '22px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-              Party Summary
-            </h1>
-            <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
-              Per-party billing overview and GST management
-            </p>
-          </div>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
+
+      {/* Date range filter */}
+      <div className="no-print flex flex-wrap gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground">From:</label>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground">To:</label>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
       </div>
 
-      {/* Filter Card */}
-      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', padding: '18px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <label style={labelStyle}>From Date</label>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={e => setFromDate(e.target.value)}
-              style={inputStyle}
-              onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-              onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>To Date</label>
-            <input
-              type="date"
-              value={toDate}
-              onChange={e => setToDate(e.target.value)}
-              style={inputStyle}
-              onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-              onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-            />
-          </div>
-          <button
-            onClick={handleApplyFilter}
-            style={{
-              backgroundColor: '#1e3a8a', color: '#ffffff', border: 'none',
-              borderRadius: '7px', padding: '9px 18px', fontSize: '13px',
-              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-            }}
-          >
-            <Filter size={14} />
-            Apply Filter
-          </button>
-          {(appliedFrom || appliedTo) && (
-            <button
-              onClick={handleClearFilter}
-              style={{
-                backgroundColor: '#ffffff', color: '#64748b',
-                border: '1.5px solid #cbd5e1', borderRadius: '7px',
-                padding: '9px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Aggregate Totals */}
-      {!isLoading && partySummaries.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-          {[
-            { label: 'Total Billed', value: formatINR(totalBilled), color: '#1e3a8a' },
-            { label: 'Total Received', value: formatINR(totalPaid), color: '#16a34a' },
-            { label: 'Total Pending', value: formatINR(totalPending), color: '#dc2626' },
-          ].map(({ label, value, color }) => (
-            <div
-              key={label}
-              style={{
-                backgroundColor: '#ffffff',
-                border: `1.5px solid ${color}30`,
-                borderLeft: `4px solid ${color}`,
-                borderRadius: '8px',
-                padding: '14px 16px',
-              }}
-            >
-              <p style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {label}
-              </p>
-              <p style={{ color, fontSize: '20px', fontWeight: 800, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Party Table */}
       {isLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px' }}>
-          <Loader2 size={24} color="#1e3a8a" className="animate-spin" />
-          <span style={{ color: '#64748b', fontSize: '15px' }}>Loading party data...</span>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
-        <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#1e3a8a' }}>
-                  {['Party Name', 'GST Number', 'Bills', 'Total Billed', 'Total Paid', 'Pending', 'Actions'].map(header => (
-                    <th
-                      key={header}
-                      style={{
-                        color: '#ffffff',
-                        padding: '12px 14px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        textAlign: header === 'Actions' ? 'center' : 'left',
-                        whiteSpace: 'nowrap',
-                        letterSpacing: '0.3px',
-                      }}
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {partySummaries.length === 0 ? (
+        <>
+          {/* Aggregate totals */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-card rounded-lg border border-border text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Billed</p>
+              <p className="text-lg font-bold text-foreground">{formatINR(totals.billed)}</p>
+            </div>
+            <div className="p-4 bg-card rounded-lg border border-border text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Paid</p>
+              <p className="text-lg font-bold text-green-600">{formatINR(totals.paid)}</p>
+            </div>
+            <div className="p-4 bg-card rounded-lg border border-border text-center">
+              <p className="text-xs text-muted-foreground mb-1">Total Pending</p>
+              <p className="text-lg font-bold text-destructive">{formatINR(totals.pending)}</p>
+            </div>
+          </div>
+
+          {summaries.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No bills found for the selected date range.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-primary text-primary-foreground">
                   <tr>
-                    <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                      No party data found for the selected date range.
-                    </td>
+                    <th className="px-4 py-3 text-left font-medium">Party Name</th>
+                    <th className="px-4 py-3 text-left font-medium">GST Number</th>
+                    <th className="px-4 py-3 text-right font-medium">Bills</th>
+                    <th className="px-4 py-3 text-right font-medium">Total Billed</th>
+                    <th className="px-4 py-3 text-right font-medium">Total Paid</th>
+                    <th className="px-4 py-3 text-right font-medium">Pending</th>
+                    <th className="px-4 py-3 text-center font-medium no-print">Actions</th>
                   </tr>
-                ) : (
-                  partySummaries.map((party, index) => (
+                </thead>
+                <tbody>
+                  {summaries.map((s, idx) => (
                     <tr
-                      key={party.partyName}
-                      style={{
-                        backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff',
-                        borderBottom: '1px solid #dbeafe',
-                      }}
+                      key={s.partyName}
+                      className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/30'}
                     >
-                      <td style={{ padding: '11px 14px', fontSize: '13px', color: '#1a1a2e', fontWeight: 600 }}>
-                        {party.partyName}
-                      </td>
-                      <td style={{ padding: '8px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="text"
-                            value={gstEdits[party.partyName] ?? party.gstNumber}
-                            onChange={e => setGstEdits(prev => ({ ...prev, [party.partyName]: e.target.value }))}
-                            placeholder="Enter GST No."
-                            style={{
-                              border: '1.5px solid #cbd5e1',
-                              borderRadius: '5px',
-                              padding: '5px 8px',
-                              fontSize: '12px',
-                              color: '#1a1a2e',
-                              backgroundColor: '#ffffff',
-                              outline: 'none',
-                              width: '140px',
+                      <td className="px-4 py-3 font-medium text-foreground">{s.partyName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {editingGst === s.partyName ? (
+                          <div className="flex items-center gap-2 no-print">
+                            <input
+                              type="text"
+                              value={gstValue}
+                              onChange={(e) => setGstValue(e.target.value)}
+                              placeholder="Enter GST number"
+                              className="border border-border rounded px-2 py-1 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-36"
+                            />
+                            <button
+                              onClick={() => handleSaveGst(s.partyName)}
+                              disabled={saveGst.isPending}
+                              className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 disabled:opacity-50"
+                            >
+                              {saveGst.isPending ? '…' : 'Save'}
+                            </button>
+                            <button
+                              onClick={() => setEditingGst(null)}
+                              className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs hover:bg-muted/80"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className="cursor-pointer hover:text-primary no-print"
+                            onClick={() => {
+                              setEditingGst(s.partyName);
+                              setGstValue(s.gstNumber || '');
                             }}
-                            onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                            onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-                          />
-                          <button
-                            onClick={() => handleSaveGst(party.partyName)}
-                            disabled={saveGstMutation.isPending}
-                            title="Save GST"
-                            style={{
-                              backgroundColor: savedGst[party.partyName] ? '#f0fdf4' : '#1e3a8a',
-                              color: savedGst[party.partyName] ? '#16a34a' : '#ffffff',
-                              border: savedGst[party.partyName] ? '1.5px solid #bbf7d0' : 'none',
-                              borderRadius: '5px',
-                              padding: '5px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                            }}
+                            title="Click to edit GST number"
                           >
-                            {savedGst[party.partyName] ? (
-                              <>
-                                <CheckCircle size={12} color="#16a34a" />
-                                Saved
-                              </>
-                            ) : saveGstMutation.isPending ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <>
-                                <Save size={12} />
-                                Save
-                              </>
-                            )}
-                          </button>
-                        </div>
+                            {s.gstNumber || <span className="italic text-muted-foreground/60">Click to add</span>}
+                          </span>
+                        )}
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: '13px', color: '#374151', textAlign: 'center' }}>
-                        <span style={{ backgroundColor: '#eff6ff', color: '#1e3a8a', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: 700 }}>
-                          {Number(party.billCount)}
-                        </span>
+                      <td className="px-4 py-3 text-right text-muted-foreground">
+                        {Number(s.billCount)}
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: '13px', color: '#1a1a2e', fontWeight: 600 }}>
-                        {formatINR(party.totalBilled)}
+                      <td className="px-4 py-3 text-right font-medium text-foreground">
+                        {formatINR(s.totalBilled)}
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: '13px', color: '#16a34a', fontWeight: 600 }}>
-                        {formatINR(party.totalPaid)}
+                      <td className="px-4 py-3 text-right text-green-600 font-medium">
+                        {formatINR(s.totalPaid)}
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: '13px', color: party.totalPending > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
-                        {formatINR(party.totalPending)}
+                      <td className="px-4 py-3 text-right text-destructive font-medium">
+                        {formatINR(s.totalPending)}
                       </td>
-                      <td style={{ padding: '11px 14px', textAlign: 'center' }}>
+                      <td className="px-4 py-3 text-center no-print">
                         <button
-                          onClick={() => navigate({ to: '/company-report', search: { party: party.partyName } as any })}
-                          style={{
-                            backgroundColor: '#eff6ff', color: '#1e3a8a',
-                            border: '1px solid #bfdbfe', borderRadius: '5px',
-                            padding: '5px 10px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '4px',
-                            fontSize: '12px', fontWeight: 600,
-                            margin: '0 auto',
-                          }}
+                          onClick={() => navigate({ to: '/company-report' })}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded text-xs font-medium hover:bg-primary/20 transition-colors mx-auto"
                         >
-                          <ExternalLink size={12} />
                           View Report
+                          <ChevronRight className="h-3 w-3" />
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

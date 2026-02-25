@@ -2,10 +2,13 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-invoiceprintview-to-remove-the-amount-paid-and-pending-amount-fields-from-the-printed-invoice-only-the-final-amount-and-its-amount-in-words-line-should-appear-in-the-gst-summary-section-of-the-print-layout-do-not-change-any-other-structural-or-content-elements-of-the-invoice-line-items-table-gst-breakdown-rows-for-base-amount-cgst-sgst-round-off-company-header-party-details-footer",
-      "featureTitle": "Update InvoicePrintView to remove the 'Amount Paid' and 'Pending Amount' fields from the printed invoice. Only the Final Amount (and its amount-in-words line) should appear in the GST summary section of the print layout. Do not change any other structural or content elements of the invoice (line items table, GST breakdown rows for Base Amount, CGST, SGST, Round-off, company header, party details, footer).",
+      "featureId": "feature-add-css-media-print-rules-to-the-global-stylesheet-frontend-src-index-css-that-hide-the-navigation-header-the-sticky-nav-bar-containing-the-mi-logo-manish-infratech-text-navigation-links-and-logout-button-and-all-other-screen-only-ui-elements-page-action-buttons-sidebars-breadcrumbs-filter-controls-during-printing-only-the-invoice-content-rendered-by-invoiceprintview-must-appear-on-the-printed-page-the-company-header-with-mi-logo-manish-infratech-name-party-name-party-gst-number-invoice-number-bill-date-line-items-table-and-gst-summary-section-no-website-chrome-must-appear-on-any-printed-page",
+      "featureTitle": "Add CSS `@media print` rules to the global stylesheet (frontend/src/index.css) that hide the navigation header (the sticky nav bar containing the MI logo, MANISH INFRATECH text, navigation links, and logout button) and all other screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls) during printing. Only the invoice content rendered by InvoicePrintView must appear on the printed page: the company header with MI logo, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. No website chrome must appear on any printed page.",
       "files": [
-        "frontend/src/components/InvoicePrintView.tsx"
+        "frontend/src/components/InvoicePrintView.tsx",
+        "frontend/src/components/Layout.tsx",
+        "frontend/src/index.css",
+        "frontend/src/pages/InvoicePrintPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -16,15 +19,19 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-75"
+        "REQ-93"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-improve-the-visual-design-and-aesthetics-of-the-printed-invoice-in-invoiceprintview-enhance-layout-polish-typography-hierarchy-spacing-and-overall-professional-appearance-while-strictly-preserving-the-existing-red-and-white-color-theme-red-header-band-white-body-red-accent-borders-on-gst-summary-table-red-typography-for-manish-infratech-mi-logo-in-top-left-no-structural-column-changes-are-permitted",
-      "featureTitle": "Improve the visual design and aesthetics of the printed invoice in InvoicePrintView. Enhance layout polish, typography hierarchy, spacing, and overall professional appearance while strictly preserving the existing red-and-white color theme (red header band, white body, red accent borders on GST summary table, red typography for 'MANISH INFRATECH', MI logo in top-left). No structural column changes are permitted.",
+      "featureId": "feature-audit-and-fix-the-backend-canister-actor-initialization-in-frontend-src-hooks-useactor-ts-to-ensure-the-icp-backend-canister-actor-is-created-using-the-anonymous-identity-instantiated-once-cached-and-reused-across-all-sessions-verify-that-the-candid-idl-interface-declared-in-the-frontend-actor-factory-exactly-matches-all-current-backend-method-signatures-in-backend-main-mo-addbill-editbill-deletebill-getallbills-searchbills-getpartysummarybydaterange-getcompanyreport-getprofitlosssummary-savepartygstnumber-getpartygstnumber-getuniquepartynames-getuniqueproductnames-fix-any-method-signature-mismatch-stale-import-or-race-condition-that-causes-the-actor-to-be-undefined-or-fail-to-connect-so-that-bills-created-on-one-device-are-visible-on-all-other-devices-via-the-shared-stable-canister-storage",
+      "featureTitle": "Audit and fix the backend canister actor initialization in `frontend/src/hooks/useActor.ts` to ensure the ICP backend canister actor is created using the anonymous identity, instantiated once, cached, and reused across all sessions. Verify that the Candid/IDL interface declared in the frontend actor factory exactly matches all current backend method signatures in `backend/main.mo` (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames). Fix any method signature mismatch, stale import, or race condition that causes the actor to be undefined or fail to connect, so that bills created on one device are visible on all other devices via the shared stable canister storage.",
       "files": [
-        "frontend/src/components/InvoicePrintView.tsx"
+        "frontend/src/pages/AddBillPage.tsx",
+        "frontend/src/pages/CompanyReportPage.tsx",
+        "frontend/src/pages/PartySummaryPage.tsx",
+        "frontend/src/pages/SearchBillsPage.tsx",
+        "frontend/src/pages/SummaryPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -35,26 +42,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-76"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-redesign-the-simpleloginscreen-component-with-an-improved-professional-and-visually-appealing-aesthetic-the-redesign-must-use-the-existing-brand-colors-red-and-white-optionally-with-navy-accents-display-the-mi-logo-and-manish-infratech-branding-prominently-and-present-the-username-and-pin-input-fields-in-a-clean-well-spaced-card-layout-the-hardcoded-credentials-username-manishinfratech-pin-1752-inline-error-display-localstorage-session-storage-behavior-and-all-authentication-logic-must-remain-completely-unchanged",
-      "featureTitle": "Redesign the SimpleLoginScreen component with an improved, professional, and visually appealing aesthetic. The redesign must use the existing brand colors (red and white, optionally with navy accents), display the MI logo and 'MANISH INFRATECH' branding prominently, and present the username and PIN input fields in a clean, well-spaced card layout. The hardcoded credentials (username: MANISHINFRATECH, PIN: 1752), inline error display, localStorage session storage behavior, and all authentication logic must remain completely unchanged.",
-      "files": [
-        "frontend/src/components/SimpleLoginScreen.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-77"
+        "REQ-94"
       ],
       "confidence": "high"
     }

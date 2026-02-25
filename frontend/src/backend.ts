@@ -91,6 +91,7 @@ export class ExternalBlob {
 }
 export interface BillOperation {
     lineItems: Array<LineItem>;
+    amountPaid: number;
     billDate: bigint;
     invoiceNumber: string;
     partyName: string;

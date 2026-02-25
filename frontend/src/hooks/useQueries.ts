@@ -5,55 +5,62 @@ import type { Bill, BillOperation, PartySummary, CompanyReport, ProfitLossSummar
 // ─── Bills ───────────────────────────────────────────────────────────────────
 
 export function useGetAllBills() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+
   return useQuery<Bill[]>({
     queryKey: ['bills'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllBills();
+      try {
+        const bills = await actor.getAllBills();
+        return bills ?? [];
+      } catch (err) {
+        console.error('getAllBills error:', err);
+        return [];
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    staleTime: 30_000,
   });
 }
 
 export function useGetBill(invoiceNumber: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<Bill>({
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<Bill | null>({
     queryKey: ['bill', invoiceNumber],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getBill(invoiceNumber);
+      if (!actor || !invoiceNumber) return null;
+      try {
+        return await actor.getBill(invoiceNumber);
+      } catch (err) {
+        console.error('getBill error:', err);
+        return null;
+      }
     },
-    enabled: !!actor && !isFetching && !!invoiceNumber,
-  });
-}
-
-export function useCheckBillExists(invoiceNumber: string, enabled: boolean) {
-  const { actor, isFetching } = useActor();
-  return useQuery<boolean>({
-    queryKey: ['billExists', invoiceNumber],
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.billExists(invoiceNumber);
-    },
-    enabled: !!actor && !isFetching && enabled && !!invoiceNumber,
+    enabled: !!actor && !actorFetching && !!invoiceNumber,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 export function useAddBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation({
+
+  return useMutation<Bill, Error, BillOperation>({
     mutationFn: async (billOp: BillOperation) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error('Actor not available. Please refresh the page and try again.');
       return actor.addBill(billOp);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['partyNames'] });
+      queryClient.invalidateQueries({ queryKey: ['productNames'] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
       queryClient.invalidateQueries({ queryKey: ['aggregate'] });
-      queryClient.invalidateQueries({ queryKey: ['uniquePartyNames'] });
-      queryClient.invalidateQueries({ queryKey: ['uniqueProductNames'] });
     },
   });
 }
@@ -61,13 +68,15 @@ export function useAddBill() {
 export function useEditBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ invoiceNumber, billOp }: { invoiceNumber: string; billOp: BillOperation }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.editBill(invoiceNumber, billOp);
+
+  return useMutation<Bill, Error, { invoiceNumber: string; updatedBillOp: BillOperation }>({
+    mutationFn: async ({ invoiceNumber, updatedBillOp }) => {
+      if (!actor) throw new Error('Actor not available. Please refresh the page and try again.');
+      return actor.editBill(invoiceNumber, updatedBillOp);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['bill', variables.invoiceNumber] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
       queryClient.invalidateQueries({ queryKey: ['aggregate'] });
     },
@@ -77,9 +86,10 @@ export function useEditBill() {
 export function useDeleteBill() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation({
+
+  return useMutation<Bill, Error, string>({
     mutationFn: async (invoiceNumber: string) => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error('Actor not available. Please refresh the page and try again.');
       return actor.deleteBill(invoiceNumber);
     },
     onSuccess: () => {
@@ -90,119 +100,188 @@ export function useDeleteBill() {
   });
 }
 
-// ─── Autocomplete ─────────────────────────────────────────────────────────────
+export function useBillExists(invoiceNumber: string) {
+  const { actor, isFetching: actorFetching } = useActor();
 
-export function useGetUniquePartyNames() {
-  const { actor, isFetching } = useActor();
-  return useQuery<string[]>({
-    queryKey: ['uniquePartyNames'],
+  return useQuery<boolean>({
+    queryKey: ['billExists', invoiceNumber],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.getUniquePartyNames();
+      if (!actor || !invoiceNumber) return false;
+      try {
+        return await actor.billExists(invoiceNumber);
+      } catch {
+        return false;
+      }
     },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetUniqueProductNames() {
-  const { actor, isFetching } = useActor();
-  return useQuery<string[]>({
-    queryKey: ['uniqueProductNames'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getUniqueProductNames();
-    },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching && !!invoiceNumber,
   });
 }
 
 // ─── Party / GST ─────────────────────────────────────────────────────────────
 
-export function useGetPartyGstNumber(partyName: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<string>({
-    queryKey: ['partyGst', partyName],
-    queryFn: async () => {
-      if (!actor) return '';
-      return actor.getPartyGstNumber(partyName);
-    },
-    enabled: !!actor && !isFetching && !!partyName,
-  });
-}
-
 export function useSavePartyGstNumber() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ partyName, gstNumber }: { partyName: string; gstNumber: string }) => {
-      if (!actor) throw new Error('Actor not available');
+
+  return useMutation<void, Error, { partyName: string; gstNumber: string }>({
+    mutationFn: async ({ partyName, gstNumber }) => {
+      if (!actor) throw new Error('Actor not available. Please refresh the page and try again.');
       return actor.savePartyGstNumber(partyName, gstNumber);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['partyGst', variables.partyName] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partyGst'] });
       queryClient.invalidateQueries({ queryKey: ['partySummary'] });
     },
   });
 }
 
-// ─── Summaries ────────────────────────────────────────────────────────────────
+export function useGetPartyGstNumber(partyName: string) {
+  const { actor, isFetching: actorFetching } = useActor();
 
-export function useGetPartySummary() {
-  const { actor, isFetching } = useActor();
-  return useQuery<PartySummary[]>({
-    queryKey: ['partySummary'],
+  return useQuery<string>({
+    queryKey: ['partyGst', partyName],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.getPartySummary();
+      if (!actor || !partyName) return '';
+      try {
+        return await actor.getPartyGstNumber(partyName);
+      } catch {
+        return '';
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching && !!partyName,
   });
 }
 
-export function useGetPartySummaryByDateRange(from: bigint, to: bigint) {
-  const { actor, isFetching } = useActor();
-  return useQuery<PartySummary[]>({
-    queryKey: ['partySummaryRange', from.toString(), to.toString()],
+// ─── Autocomplete ─────────────────────────────────────────────────────────────
+
+export function useGetUniquePartyNames() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['partyNames'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getPartySummaryByDateRange(from, to);
+      try {
+        return await actor.getUniquePartyNames();
+      } catch {
+        return [];
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
+    staleTime: 60_000,
   });
 }
+
+export function useGetUniqueProductNames() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['productNames'],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getUniqueProductNames();
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !actorFetching,
+    staleTime: 60_000,
+  });
+}
+
+// ─── Summaries & Reports ──────────────────────────────────────────────────────
 
 export function useGetAggregate() {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+
   return useQuery<{ totalAmount: number; totalGst: number }>({
     queryKey: ['aggregate'],
     queryFn: async () => {
       if (!actor) return { totalAmount: 0, totalGst: 0 };
-      return actor.getAggregate();
+      try {
+        return await actor.getAggregate();
+      } catch {
+        return { totalAmount: 0, totalGst: 0 };
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useGetPartySummary() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<PartySummary[]>({
+    queryKey: ['partySummary'],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getPartySummary();
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !actorFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useGetPartySummaryByDateRange(from: bigint, to: bigint) {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<PartySummary[]>({
+    queryKey: ['partySummaryByDate', from.toString(), to.toString()],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        return await actor.getPartySummaryByDateRange(from, to);
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !actorFetching && from > 0n && to > 0n,
+    staleTime: 30_000,
   });
 }
 
 export function useGetCompanyReport(partyName: string, from: bigint, to: bigint) {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+
   return useQuery<CompanyReport>({
     queryKey: ['companyReport', partyName, from.toString(), to.toString()],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCompanyReport(partyName, from, to);
+      if (!actor || !partyName) {
+        return { totalServiceAmount: 0, totalReceived: 0, totalPending: 0, bills: [] };
+      }
+      try {
+        return await actor.getCompanyReport(partyName, from, to);
+      } catch {
+        return { totalServiceAmount: 0, totalReceived: 0, totalPending: 0, bills: [] };
+      }
     },
-    enabled: !!actor && !isFetching && !!partyName,
+    enabled: !!actor && !actorFetching && !!partyName && from > 0n && to > 0n,
+    staleTime: 30_000,
   });
 }
 
 export function useGetProfitLossSummary(from: bigint, to: bigint) {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+
   return useQuery<ProfitLossSummary>({
     queryKey: ['profitLoss', from.toString(), to.toString()],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getProfitLossSummary(from, to);
+      if (!actor) {
+        return { totalBilled: 0, totalReceived: 0, totalOutstanding: 0, profitLossIndicator: false };
+      }
+      try {
+        return await actor.getProfitLossSummary(from, to);
+      } catch {
+        return { totalBilled: 0, totalReceived: 0, totalOutstanding: 0, profitLossIndicator: false };
+      }
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !actorFetching && from > 0n && to > 0n,
+    staleTime: 30_000,
   });
 }

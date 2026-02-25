@@ -1,11 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Improve the invoice print view by removing paid/pending fields and enhancing its visual polish, and redesign the login screen with a more professional appearance.
+**Goal:** Fix the print layout so only invoice content appears when printing, and ensure bills are synced across all devices via the shared ICP canister stable storage.
 
 **Planned changes:**
-- Remove the "Amount Paid" and "Pending Amount" rows from the `InvoicePrintView` print layout, keeping only the Final Amount and its amount-in-words line in the GST summary section.
-- Improve the visual design of `InvoicePrintView`: better spacing, typography hierarchy, and overall professional appearance while preserving the existing red-and-white color theme, header band, MI logo, and all structural content.
-- Redesign `SimpleLoginScreen` with a polished card layout featuring the MI logo and "MANISH INFRATECH" branding prominently, well-spaced username/PIN fields, and a branded login button — with no changes to authentication logic, credentials, or session management.
+- Add `@media print` CSS rules to the global stylesheet to hide the navigation header (navy bar with MI logo, nav links, logout button) and all screen-only UI elements (action buttons, sidebars, filter controls) during printing
+- Ensure the printed invoice shows only: MI logo, company name, buyer party name, party GST number, invoice number, bill date, line items table, and GST summary
+- Audit and fix `useActor.ts` so the backend canister actor is created with anonymous identity, instantiated once, cached, and reused across all sessions
+- Verify the frontend Candid/IDL interface exactly matches all backend method signatures in `main.mo`; fix any mismatches or stale imports
+- Show a loading spinner while the actor initializes, and an error message if initialization fails
+- Confirm `main.mo` uses stable variables for bills and party profiles with correct `preupgrade`/`postupgrade` hooks so all data survives upgrades and is globally accessible from any device
 
-**User-visible outcome:** The printed invoice no longer shows paid/pending amounts and looks more refined, and the login screen presents a cleaner, more professional branded interface.
+**User-visible outcome:** Printed invoices no longer show the navigation header — only the professional invoice content appears. Bills created on one device are visible on all other devices without manual refresh.

@@ -1,61 +1,87 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Improve invoice print view and redesign login screen",
+  "title": "Fix print layout (hide nav header) and ensure cross-device bill sync",
   "requirements": [
     {
-      "id": "REQ-75",
-      "summary": "Remove 'Amount Paid' and 'Pending Amount' fields from the printed invoice in InvoicePrintView, keeping only the Final Amount and amount-in-words line in the GST summary section",
+      "id": "REQ-93",
+      "summary": "Add @media print CSS rules to hide navigation header and screen-only UI elements during printing, ensuring only invoice content appears on printed pages",
       "acceptanceCriteria": [
-        "The printed invoice does not display an 'Amount Paid' row or field.",
-        "The printed invoice does not display a 'Pending Amount' row or field.",
-        "The Final Amount row remains present and clearly visible in the GST summary section.",
-        "The amount-in-words line (e.g. 'Rupees X Only') continues to appear below the Final Amount on the printed view.",
-        "All other invoice content (header, party name, GST No., invoice number, bill date, line items table, Base Amount, CGST, SGST, Round-off, footer) is unchanged."
+        "When window.print() is triggered from the InvoicePrintPage, the navigation header bar (navy background, MI logo, nav links, logout button) does NOT appear on the printed output.",
+        "The printed invoice shows only: MI logo, MANISH INFRATECH company name, buyer's party name, party GST number (if available), invoice number, bill date, line items table, and GST summary (Base Amount, CGST, SGST, Round-off, Final Amount, amount in words).",
+        "Action buttons (Print, Back, Edit, Delete) and filter controls do not appear on the printed page.",
+        "The @media print CSS rules apply globally so that any page that triggers print hides the nav header.",
+        "The invoice content prints cleanly without extra whitespace or broken layout caused by hidden elements."
       ],
       "file_operations": [
         {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Add @media print rules to hide the navigation header (identified by Layout component's header with sticky positioning, navy background, MI logo, MANISH INFRATECH text, nav links, and logout button) and all screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls). Ensure only invoice content rendered by InvoicePrintView is visible: company header with MI logo from frontend/public/assets/generated/mi-logo.dim_128x128.png, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. Use display:none for .no-print class and header elements, and add page-break rules to prevent content splitting."
+        },
+        {
+          "path": "frontend/src/components/Layout.tsx",
+          "operation": "modify",
+          "description": "Add the 'no-print' CSS class to the sticky header element containing the MI logo, MANISH INFRATECH branding, navigation links (Add Bill, Search Bills, Summary, Party Summary, Company Report), and logout button so it is hidden during print via the @media print rules in index.css."
+        },
+        {
+          "path": "frontend/src/pages/InvoicePrintPage.tsx",
+          "operation": "modify",
+          "description": "Add the 'no-print' CSS class to the action button container (Print and Back buttons) so these controls are hidden during print via the @media print rules in index.css."
+        },
+        {
           "path": "frontend/src/components/InvoicePrintView.tsx",
           "operation": "modify",
-          "description": "Remove the 'Amount Paid' and 'Pending Amount' rows from the GST summary section of the print layout. Keep the Final Amount row and the amount-in-words line below it. Do not alter any other elements including the header, party details, line items table, Base Amount, CGST, SGST, Round-off rows, or footer."
+          "description": "Review and ensure the component structure is print-optimized: verify the MI logo references the correct workspace path frontend/public/assets/generated/mi-logo.dim_128x128.png, ensure all invoice content (company header, party details, invoice number, bill date, line items table, GST summary with Base Amount/CGST/SGST/Round-off/Final Amount/amount in words) uses print-safe styling with no flex/grid layout that could break across pages. Do not change the content structure or add new fields."
         }
       ]
     },
     {
-      "id": "REQ-76",
-      "summary": "Enhance the visual design, typography, spacing, and professional appearance of InvoicePrintView while preserving the red-and-white color theme and existing structural layout",
+      "id": "REQ-94",
+      "summary": "Audit and fix backend canister actor initialization in useActor.ts to ensure anonymous identity actor is created once, cached, reused across sessions, and matches all backend method signatures, fixing cross-device bill sync issues",
       "acceptanceCriteria": [
-        "The printed invoice uses improved spacing, font sizing, and typographic hierarchy compared to the current version.",
-        "The red header band, white body background, red accent borders, and red 'MANISH INFRATECH' typography are preserved.",
-        "The MI logo (red/white square with 'MI' initials) continues to appear in the top-left corner of the header.",
-        "The line item table columns (Sr. No., HSN Code, Product Name, Qty, Unit, Rate ₹, Amount ₹) are unchanged.",
-        "The GST summary section columns and row labels are unchanged.",
-        "The overall invoice looks professional and aesthetically refined when printed or previewed."
+        "Bills added on Device A appear when the app is loaded on Device B without requiring any manual refresh or cache clearing.",
+        "The actor is created with anonymous identity (no Internet Identity dependency).",
+        "The actor instance is cached and reused — not recreated on every render or hook call.",
+        "All backend method calls (getAllBills, addBill, editBill, deleteBill, searchBills, and report methods) resolve without 'actor not available' errors.",
+        "The IDL/Candid interface declared in the frontend exactly matches the backend method signatures (argument types, return types, variant labels).",
+        "While the actor is initializing, a loading spinner is shown on data-dependent pages. If initialization fails, the message 'Unable to connect to server. Please refresh and try again.' is displayed."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/InvoicePrintView.tsx",
+          "path": "frontend/src/hooks/useActor.ts",
           "operation": "modify",
-          "description": "Improve the print layout's visual design by refining typography (font sizes, weights, letter spacing), enhancing spacing (padding, margins, line heights), and polishing the overall aesthetic. Preserve the existing red-and-white color scheme (red header band, white body, red accent borders on GST summary, red 'MANISH INFRATECH' typography). Ensure the MI logo at frontend/public/assets/generated/mi-logo.dim_128x128.png remains in the top-left corner of the header. Do not change the structural columns of the line items table or GST summary rows."
-        }
-      ]
-    },
-    {
-      "id": "REQ-77",
-      "summary": "Redesign SimpleLoginScreen with improved professional aesthetics using brand colors (red, white, navy), displaying MI logo and 'MANISH INFRATECH' branding, with clean card layout for username/PIN fields while preserving all authentication logic",
-      "acceptanceCriteria": [
-        "The login screen displays a visually polished card or panel with the MI logo and 'MANISH INFRATECH' branding at the top.",
-        "Username and PIN fields are clearly labeled with readable dark text and proper spacing.",
-        "The login button uses brand colors (red or navy background with white text) and has a professional appearance.",
-        "An inline error message is shown in red/visible color for invalid credentials.",
-        "Successful login with MANISHINFRATECH / 1752 grants access to the app and stores the session in localStorage.",
-        "No change to authentication logic, credentials, or session management behavior."
-      ],
-      "file_operations": [
+          "description": "Audit the actor initialization logic to ensure: (1) the actor is created using anonymous identity (not requiring Internet Identity login), (2) the actor instance is created once and cached in React Query state (not recreated on every render or hook invocation), (3) the Candid/IDL interface declaration exactly matches all current backend method signatures from backend/main.mo (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames, plus any authorization methods like getCallerUserProfile, saveCallerUserProfile, getUserProfile, getCallerUserRole, assignCallerUserRole, isCallerAdmin from the authorization component), (4) fix any race conditions or stale import paths that cause the actor to be undefined or fail to connect. The actor must connect to the shared stable canister storage so bills created on one device are visible on all other devices. Verify that dependent queries are invalidated correctly when the actor changes."
+        },
         {
-          "path": "frontend/src/components/SimpleLoginScreen.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Redesign the login screen with a professional card-based layout. Display the MI logo from frontend/public/assets/generated/mi-logo.dim_128x128.png and 'MANISH INFRATECH' branding prominently at the top. Style the username and PIN input fields with clear labels, readable dark text, and adequate spacing. Style the login button with brand colors (red or navy background, white text). Show inline error messages in red/visible color for invalid credentials. Use the existing useSimpleAuth hook without modifying authentication logic, hardcoded credentials (MANISHINFRATECH/1752), or session management behavior."
+          "description": "Review all query hooks (useGetAllBills, useGetBill, useSearchBills, useGetPartySummary, useGetCompanyReport, useGetProfitLossSummary, useGetPartyGstNumber, useGetUniquePartyNames, useGetUniqueProductNames) to ensure they correctly handle the actor loading state from useActor. Each query should be disabled (enabled: !!actor) until the actor is available, and should display appropriate loading or error states when the actor is undefined or initialization fails. Ensure mutation hooks (useAddBill, useEditBill, useDeleteBill, useSavePartyGstNumber) also guard against undefined actor and show 'Unable to connect to server' errors when actor initialization fails."
+        },
+        {
+          "path": "frontend/src/pages/AddBillPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the page displays a loading spinner while the actor is initializing (check useActor isFetching state). If actor initialization fails, display the error message 'Unable to connect to server. Please refresh and try again.' prominently above the form. Do not allow form submission when the actor is unavailable."
+        },
+        {
+          "path": "frontend/src/pages/SearchBillsPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching bills. If actor initialization or the getAllBills query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the search form and results table."
+        },
+        {
+          "path": "frontend/src/pages/SummaryPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching summary data. If actor initialization or any summary query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the summary cards and CSV export controls."
+        },
+        {
+          "path": "frontend/src/pages/PartySummaryPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching party summaries. If actor initialization or the getPartySummaryByDateRange query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the date filters and party summary table."
+        },
+        {
+          "path": "frontend/src/pages/CompanyReportPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching company report data. If actor initialization or the getCompanyReport query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the filters, report table, and CSV export controls."
         }
       ]
     }

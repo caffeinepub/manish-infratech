@@ -1,13 +1,11 @@
 import Map "mo:core/Map";
+import Text "mo:core/Text";
 import Principal "mo:core/Principal";
-import Float "mo:core/Float";
-import Int "mo:core/Int";
 
 module {
-  type UserProfile = {
-    name : Text;
-  };
-
+  // Types from the original actor.
+  type UserProfile = { name : Text };
+  type PartyProfile = { gstNumber : Text };
   type LineItem = {
     srNo : Nat;
     hsnCode : Text;
@@ -17,8 +15,7 @@ module {
     rate : Float;
     totalAmount : Float;
   };
-
-  type BillOld = {
+  type Bill = {
     partyName : Text;
     invoiceNumber : Text;
     baseAmount : Float;
@@ -33,38 +30,17 @@ module {
     lineItems : [LineItem];
   };
 
-  type BillNew = {
-    partyName : Text;
-    invoiceNumber : Text;
-    baseAmount : Float;
-    cgst : Float;
-    sgst : Float;
-    totalGst : Float;
-    roundOff : Float;
-    finalAmount : Float;
-    amountPaid : Float;
-    pendingAmount : Float;
-    billDate : Int;
-    lineItems : [LineItem];
-  };
-
-  type PartyProfile = {
-    gstNumber : Text;
-  };
-
+  // Actor state before migration.
   type OldActor = {
+    MAX_LINE_ITEMS : Nat;
     userProfiles : Map.Map<Principal, UserProfile>;
-    userBills : Map.Map<Principal, Map.Map<Text, BillOld>>;
     partyGstNumbers : Map.Map<Text, PartyProfile>;
+    bills : Map.Map<Text, Bill>;
   };
 
-  type NewActor = {
-    userProfiles : Map.Map<Principal, UserProfile>;
-    userBills : Map.Map<Principal, Map.Map<Text, BillNew>>;
-    partyGstNumbers : Map.Map<Text, PartyProfile>;
-  };
+  // Actor state after migration.
+  type NewActor = OldActor;
 
-  public func run(old : OldActor) : NewActor {
-    old;
-  };
+  // Migration function called by the main actor via the with-clause.
+  public func run(old : OldActor) : NewActor { old };
 };

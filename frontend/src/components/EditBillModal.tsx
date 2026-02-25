@@ -23,6 +23,7 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
   const [partyName, setPartyName] = useState(bill.partyName);
   const [invoiceNumber] = useState(bill.invoiceNumber);
   const [billDate, setBillDate] = useState('');
+  const [amountPaid, setAmountPaid] = useState(String(bill.amountPaid));
   const [lineItems, setLineItems] = useState<LineItemForm[]>([]);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -38,6 +39,8 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     setBillDate(`${yyyy}-${mm}-${dd}`);
+
+    setAmountPaid(String(bill.amountPaid));
 
     setLineItems(
       bill.lineItems.map(item => ({
@@ -106,6 +109,7 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
 
     const billDateMs = new Date(billDate).getTime();
     const billDateNs = BigInt(billDateMs) * 1_000_000n;
+    const paidAmount = parseFloat(amountPaid) || 0;
 
     const backendLineItems: LineItem[] = validItems.map((item, idx) => ({
       srNo: BigInt(idx + 1),
@@ -120,17 +124,19 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
     try {
       await editBillMutation.mutateAsync({
         invoiceNumber,
-        billOp: {
+        updatedBillOp: {
           partyName: partyName.trim(),
           invoiceNumber,
           billDate: billDateNs,
           lineItems: backendLineItems,
+          amountPaid: paidAmount,
         },
       });
       setSuccessMessage('✓ Bill updated successfully!');
       setTimeout(() => onClose(), 1500);
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to update bill. Please try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMessage(msg || 'Failed to update bill. Please try again.');
     }
   };
 
@@ -213,6 +219,20 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
                 type="date"
                 value={billDate}
                 onChange={e => setBillDate(e.target.value)}
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
+                onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Amount Paid (₹)</label>
+              <input
+                type="number"
+                value={amountPaid}
+                onChange={e => setAmountPaid(e.target.value)}
+                placeholder="0.00"
+                min="0"
+                step="any"
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
                 onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
@@ -303,7 +323,7 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
                           type="text"
                           value={item.unit}
                           onChange={e => updateLineItem(index, 'unit', e.target.value)}
-                          placeholder="Unit"
+                          placeholder="e.g. Nos"
                           style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'center' }}
                           onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
                           onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
@@ -361,6 +381,8 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
                   { label: 'SGST (9%)', value: formatINR(sgst) },
                   { label: 'Total GST (18%)', value: formatINR(totalGst) },
                   { label: 'Round Off', value: `${roundOff >= 0 ? '+' : ''}${roundOff.toFixed(2)}` },
+                  { label: 'Amount Paid', value: formatINR(parseFloat(amountPaid) || 0) },
+                  { label: 'Pending Amount', value: formatINR(Math.max(0, finalAmount - (parseFloat(amountPaid) || 0))) },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span style={{ color: '#475569' }}>{label}</span>
@@ -402,10 +424,10 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
               type="button"
               onClick={onClose}
               style={{
-                backgroundColor: '#ffffff', color: '#1e3a8a',
-                border: '1.5px solid #1e3a8a', borderRadius: '8px',
+                backgroundColor: '#f1f5f9', color: '#475569',
+                border: '1.5px solid #cbd5e1', borderRadius: '8px',
                 padding: '10px 20px', fontSize: '14px', fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'Poppins, sans-serif',
+                cursor: 'pointer',
               }}
             >
               Cancel
@@ -414,24 +436,20 @@ export default function EditBillModal({ bill, onClose }: EditBillModalProps) {
               type="submit"
               disabled={editBillMutation.isPending}
               style={{
-                backgroundColor: editBillMutation.isPending ? '#94a3b8' : '#1e3a8a',
+                backgroundColor: editBillMutation.isPending ? '#93c5fd' : '#1e3a8a',
                 color: '#ffffff', border: 'none', borderRadius: '8px',
                 padding: '10px 24px', fontSize: '14px', fontWeight: 700,
                 cursor: editBillMutation.isPending ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', gap: '8px',
-                fontFamily: 'Poppins, sans-serif',
               }}
             >
               {editBillMutation.isPending ? (
                 <>
-                  <Loader2 size={15} className="animate-spin" />
-                  Saving...
+                  <Loader2 size={16} className="animate-spin" />
+                  Saving…
                 </>
               ) : (
-                <>
-                  <CheckCircle size={15} />
-                  Save Changes
-                </>
+                'Save Changes'
               )}
             </button>
           </div>

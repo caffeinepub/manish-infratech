@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 31,
+  "projectStateVersion": 37,
   "summary": "Manish Infratech billing/invoice management web app. Clean rebuild from version 5 base. Authentication: simple username/PIN login (MANISHINFRATECH / 1752), session in localStorage; bills stored in stable canister storage (persists across logouts/upgrades). Features: Add/Edit bills with party name (autocomplete from saved names), unique invoice number, auto-populated alterable bill date, up to 15 line item rows (Sr. No., HSN Code, Product Name, Qty, Unit [free-text only], Rate, computed Amount); live GST summary (CGST 9%, SGST 9%, round-off, final amount, amount paid, pending); amount paid & pending per bill; no duplicate invoice numbers. Invoice print: red header band, white body, MI logo (red/white) top-left, MANISH INFRATECH in red, 'TAX INVOICE' label, party GST No. in header, line items table, GST summary, amount in words (print/share only), 'Thank you for your business' footer. Search by company name or bill number shows all bills of that company. Party Summary page: all companies with totals, GST No. (editable), date filter, View Report. Company Report page: per-party summary cards, date filter, bill table with Print per row, CSV download. Summary/P&L page: overall financials, Profit & Loss section, date filter, CSV download (authenticated only). Data stored in stable backend storage with correct nanosecond↔millisecond date conversion.",
   "architectural_notes": [
     "Single-user access control: protect all routes behind authentication",
@@ -20,9 +20,12 @@
     "Actor not available error on bill add — bills cannot be saved; version 10 deploy broke canister actor connection",
     "Old bills appear deleted/missing after version 10 deploy — possible data loss or canister reinstall issue",
     "Date shows 1970 on bills — likely caused by incorrect Unix timestamp unit (nanoseconds being passed where milliseconds expected, or vice versa) in date display logic",
-    "App text appears in pure white on white/light backgrounds — text is invisible on Add Bill, Summary, and other pages; must be changed to black"
+    "App text appears in pure white on white/light backgrounds — text is invisible on Add Bill, Summary, and other pages; must be changed to black",
+    "Cross-device data not syncing — bills stored in canister stable storage should be globally accessible but different devices show different data; likely a canister actor connection or caching issue",
+    "Printing not working after version 16 — invoice print feature is broken/not triggering and InvoicePrintView is not rendering correctly",
+    "Date range filter broken — date range inputs on Summary, Party Summary, and Company Report pages not filtering correctly due to timestamp conversion issues"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-implement-internet-identity-authentication-so-the-app-is-only-accessible-by-the-authenticated-owner-on-first-login-register-the-caller-s-principal-as-the-sole-authorized-owner-on-all-subsequent-visits-gate-access-behind-that-stored-principal-any-other-principal-must-be-rejected-and-shown-an-unauthorized-message",
@@ -511,6 +514,78 @@
         "REQ-77"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-fix-the-getallbills-query-in-usequeries-ts-so-that-it-fetches-and-returns-all-stored-bills-once-the-actor-is-available-the-query-must-not-run-until-the-actor-instance-is-defined-use-the-enabled-flag-tied-to-actor-availability-on-successful-fetch-all-bills-must-be-displayed-in-the-billresultstable-on-the-search-and-summary-pages",
+      "title": "Fix the getAllBills query in useQueries.ts so that it fetches and returns all stored bills once the actor is available. The query must not run until the actor instance is defined (use the 'enabled' flag tied to actor availability). On successful fetch, all bills must be displayed in the BillResultsTable on the Search and Summary pages.",
+      "reqIds": [
+        "REQ-80"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-graceful-loading-and-error-states-across-all-data-dependent-pages-while-the-actor-is-initializing-show-a-loading-spinner-if-the-actor-fails-to-initialize-after-a-reasonable-timeout-display-a-clear-error-message-unable-to-connect-to-server-please-refresh-and-try-again-the-save-bill-button-in-addbillform-must-be-disabled-and-show-a-loading-indicator-while-the-actor-is-not-yet-available-no-blank-pages-or-silent-failures-are-acceptable",
+      "title": "Add graceful loading and error states across all data-dependent pages. While the actor is initializing, show a loading spinner. If the actor fails to initialize after a reasonable timeout, display a clear error message: 'Unable to connect to server. Please refresh and try again.' The Save Bill button in AddBillForm must be disabled and show a loading indicator while the actor is not yet available. No blank pages or silent failures are acceptable.",
+      "reqIds": [
+        "REQ-82"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-the-actor-initialization-in-useactor-ts-to-create-the-icp-backend-canister-actor-using-the-anonymous-identity-no-internet-identity-required-since-authentication-is-handled-entirely-in-the-frontend-via-localstorage-the-actor-must-be-instantiated-once-cached-and-reused-across-all-query-and-mutation-hook-calls-remove-any-stale-identity-dependent-or-internet-identity-dependent-logic-that-causes-the-actor-to-be-undefined-expose-a-stable-isactorready-flag-and-an-actorerror-state-while-the-actor-is-initializing-show-a-loading-spinner-on-all-data-dependent-pages-if-initialization-fails-show-the-message-unable-to-connect-to-server-please-refresh-and-try-again",
+      "title": "Rewrite the actor initialization in useActor.ts to create the ICP backend canister actor using the anonymous identity (no Internet Identity required, since authentication is handled entirely in the frontend via localStorage). The actor must be instantiated once, cached, and reused across all query and mutation hook calls. Remove any stale identity-dependent or Internet Identity-dependent logic that causes the actor to be undefined. Expose a stable isActorReady flag and an actorError state. While the actor is initializing show a loading spinner on all data-dependent pages; if initialization fails show the message 'Unable to connect to server. Please refresh and try again.'",
+      "reqIds": [
+        "REQ-85"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-all-bill-date-display-and-submission-bugs-across-the-entire-app-bill-dates-are-stored-as-nanosecond-unix-timestamps-int-bigint-in-the-backend-every-location-that-displays-a-date-billresultstable-companyreportpage-invoiceprintview-editbillmodal-addbillform-summarypage-partysummarypage-must-divide-the-nanosecond-value-by-1-000-000-before-passing-it-to-javascript-s-date-constructor-every-location-that-reads-a-date-from-a-date-input-and-submits-it-to-the-backend-must-multiply-the-millisecond-value-by-1-000-000-before-sending-dates-must-display-in-dd-mm-yyyy-format-throughout-the-bill-date-field-in-addbillform-must-auto-populate-with-today-s-date-when-the-form-opens",
+      "title": "Fix all bill date display and submission bugs across the entire app. Bill dates are stored as nanosecond Unix timestamps (Int/BigInt) in the backend. Every location that displays a date — BillResultsTable, CompanyReportPage, InvoicePrintView, EditBillModal, AddBillForm, SummaryPage, PartySummaryPage — must divide the nanosecond value by 1,000,000 before passing it to JavaScript's Date constructor. Every location that reads a date from a date input and submits it to the backend must multiply the millisecond value by 1,000,000 before sending. Dates must display in DD/MM/YYYY format throughout. The Bill Date field in AddBillForm must auto-populate with today's date when the form opens.",
+      "reqIds": [
+        "REQ-87"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-unit-field-in-every-line-item-row-in-addbillform-and-editbillmodal-is-a-plain-free-text-input-element-remove-any-dropdown-datalist-autocomplete-suggestion-list-or-predefined-option-set-from-the-unit-field-the-user-must-be-able-to-type-any-arbitrary-unit-value-e-g-sqm-rmt-pcs-kg-or-custom-text-freely",
+      "title": "Ensure the Unit field in every line item row in AddBillForm and EditBillModal is a plain free-text <input> element. Remove any dropdown, datalist, autocomplete suggestion list, or predefined option set from the Unit field. The user must be able to type any arbitrary unit value (e.g. SQM, RMT, PCS, KG, or custom text) freely.",
+      "reqIds": [
+        "REQ-90"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-bill-save-flow-end-to-end-when-the-user-fills-out-addbillform-and-clicks-save-bill-the-mutation-must-call-the-addbill-backend-method-with-all-required-fields-partyname-invoicenumber-billdate-as-nanoseconds-line-items-with-srno-hsncode-productname-quantity-unit-rate-totalamount-amountpaid-on-success-show-a-green-confirmation-message-reset-the-form-and-invalidate-the-getallbills-cache-so-the-new-bill-appears-in-listings-on-duplicate-invoice-number-show-a-clear-inline-error-on-any-other-error-show-a-visible-error-message-never-fail-silently",
+      "title": "Fix the bill save flow end-to-end. When the user fills out AddBillForm and clicks 'Save Bill', the mutation must call the addBill backend method with all required fields (partyName, invoiceNumber, billDate as nanoseconds, line items with srNo/hsnCode/productName/quantity/unit/rate/totalAmount, amountPaid). On success, show a green confirmation message, reset the form, and invalidate the getAllBills cache so the new bill appears in listings. On duplicate invoice number, show a clear inline error. On any other error, show a visible error message — never fail silently.",
+      "reqIds": [
+        "REQ-91"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-edit-bill-flow-when-editbillmodal-opens-for-an-existing-bill-all-fields-must-be-correctly-pre-filled-partyname-invoicenumber-billdate-converted-from-nanoseconds-to-a-date-input-value-all-line-items-srno-hsncode-productname-quantity-unit-rate-computed-totalamount-and-amountpaid-on-save-the-editbill-backend-method-must-be-called-with-all-updated-fields-on-success-show-a-green-confirmation-close-the-modal-and-refresh-the-bill-listings-validate-for-duplicate-invoice-numbers-if-the-invoice-number-was-changed",
+      "title": "Fix the Edit Bill flow. When EditBillModal opens for an existing bill, all fields must be correctly pre-filled: partyName, invoiceNumber, billDate (converted from nanoseconds to a date input value), all line items (srNo, hsnCode, productName, quantity, unit, rate, computed totalAmount), and amountPaid. On save, the editBill backend method must be called with all updated fields. On success, show a green confirmation, close the modal, and refresh the bill listings. Validate for duplicate invoice numbers if the invoice number was changed.",
+      "reqIds": [
+        "REQ-92"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-css-media-print-rules-to-the-global-stylesheet-frontend-src-index-css-that-hide-the-navigation-header-the-sticky-nav-bar-containing-the-mi-logo-manish-infratech-text-navigation-links-and-logout-button-and-all-other-screen-only-ui-elements-page-action-buttons-sidebars-breadcrumbs-filter-controls-during-printing-only-the-invoice-content-rendered-by-invoiceprintview-must-appear-on-the-printed-page-the-company-header-with-mi-logo-manish-infratech-name-party-name-party-gst-number-invoice-number-bill-date-line-items-table-and-gst-summary-section-no-website-chrome-must-appear-on-any-printed-page",
+      "title": "Add CSS `@media print` rules to the global stylesheet (frontend/src/index.css) that hide the navigation header (the sticky nav bar containing the MI logo, MANISH INFRATECH text, navigation links, and logout button) and all other screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls) during printing. Only the invoice content rendered by InvoicePrintView must appear on the printed page: the company header with MI logo, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. No website chrome must appear on any printed page.",
+      "reqIds": [
+        "REQ-93"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-the-backend-canister-actor-initialization-in-frontend-src-hooks-useactor-ts-to-ensure-the-icp-backend-canister-actor-is-created-using-the-anonymous-identity-instantiated-once-cached-and-reused-across-all-sessions-verify-that-the-candid-idl-interface-declared-in-the-frontend-actor-factory-exactly-matches-all-current-backend-method-signatures-in-backend-main-mo-addbill-editbill-deletebill-getallbills-searchbills-getpartysummarybydaterange-getcompanyreport-getprofitlosssummary-savepartygstnumber-getpartygstnumber-getuniquepartynames-getuniqueproductnames-fix-any-method-signature-mismatch-stale-import-or-race-condition-that-causes-the-actor-to-be-undefined-or-fail-to-connect-so-that-bills-created-on-one-device-are-visible-on-all-other-devices-via-the-shared-stable-canister-storage",
+      "title": "Audit and fix the backend canister actor initialization in `frontend/src/hooks/useActor.ts` to ensure the ICP backend canister actor is created using the anonymous identity, instantiated once, cached, and reused across all sessions. Verify that the Candid/IDL interface declared in the frontend actor factory exactly matches all current backend method signatures in `backend/main.mo` (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames). Fix any method signature mismatch, stale import, or race condition that causes the actor to be undefined or fail to connect, so that bills created on one device are visible on all other devices via the shared stable canister storage.",
+      "reqIds": [
+        "REQ-94"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -868,6 +943,78 @@
       "id": "AR-70",
       "summary": "Improve the login screen design/aesthetics — make it more visually appealing without changing credentials or functionality.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-71",
+      "summary": "Rewrite the frontend actor initialization in useActor.ts to ensure the ICP backend canister actor is fully and correctly instantiated before any query or mutation is attempted. The actor must be created using the anonymous identity (no Internet Identity required, since auth is frontend-only via localStorage). Remove any stale identity-dependent logic that causes the actor to be undefined. The actor instance must be cached and reused across all hook calls.",
+      "reqIds": [
+        "REQ-78"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-72",
+      "summary": "Audit and fix the Candid/IDL interface declared in the frontend actor factory to exactly match the current backend method signatures. The frontend IDL must declare all of the following methods with correct argument and return types: addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames. Any method signature mismatch, missing method, or stale type definition that causes canister calls to fail silently must be corrected.",
+      "reqIds": [
+        "REQ-79"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-74",
+      "summary": "Audit the backend main.mo actor to confirm it uses stable variables for all persistent data (bills map, partyProfiles map) with correct preupgrade and postupgrade system hooks that serialize and deserialize all stable state. If the hooks are missing or incorrect, add/fix them so that all bill data and party profiles survive canister upgrades and redeployments without data loss.",
+      "reqIds": [
+        "REQ-81"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-75",
+      "summary": "Fix the backend Motoko actor in backend/main.mo to ensure all persistent data (bills map, partyProfiles map) is stored in stable variables. Implement correct preupgrade and postupgrade system hooks that serialize and deserialize all stable state so that bill data and party profiles survive every canister upgrade and redeployment without data loss. Bills must be globally accessible to all authenticated sessions from any device.",
+      "reqIds": [
+        "REQ-83"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-76",
+      "summary": "Audit and fix the Candid/IDL interface declared in the frontend actor factory (used in useActor.ts) to exactly match the current backend method signatures in backend/main.mo. The IDL must correctly declare all methods: addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames. Fix every argument type, return type, and variant label mismatch that causes canister calls to fail silently or return unexpected results.",
+      "reqIds": [
+        "REQ-84"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-78",
+      "summary": "Fix the getAllBills query in useQueries.ts: set the enabled flag so the query only runs when the actor instance is defined and available. On successful fetch, ensure all bills are passed to and displayed in BillResultsTable on both the Search/Bills page and the Summary/P&L page. The query must automatically refetch after a bill is added, edited, or deleted.",
+      "reqIds": [
+        "REQ-86"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-80",
+      "summary": "Fix the invoice print feature (InvoicePrintView). The print trigger (window.print or equivalent) must fire correctly when the Print button is clicked. InvoicePrintView must render the full invoice layout: red header band with MI logo (top-left) and 'MANISH INFRATECH' in large red typography, 'TAX INVOICE' label, party name and GST number (if available, formatted as 'GST No: <value>'), invoice number, bill date in DD/MM/YYYY format, line items table with columns Sr. No. / HSN Code / Product Name / Qty / Unit / Rate (₹) / Amount (₹), GST summary section (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount), amount in words below Final Amount (Indian currency format, print/share view only), and 'Thank you for your business' footer.",
+      "reqIds": [
+        "REQ-88"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-81",
+      "summary": "Fix the date range filter on the SummaryPage, PartySummaryPage, and CompanyReportPage. The From and To date inputs must correctly convert the selected dates to nanosecond Unix timestamps before calling getPartySummaryByDateRange, getCompanyReport, and getProfitLossSummary on the backend. When the filter is applied, only bills whose billDate falls within the selected range must be included in the results.",
+      "reqIds": [
+        "REQ-89"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-84",
+      "summary": "Confirm that the backend `backend/main.mo` actor uses stable variables for the bills map and partyProfiles map, and that `preupgrade` and `postupgrade` system hooks correctly serialize and deserialize all stable state. Bills must be globally accessible from any device via the shared canister stable storage and must survive every canister upgrade and redeployment without data loss.",
+      "reqIds": [
+        "REQ-95"
+      ],
       "status": "pending"
     }
   ],

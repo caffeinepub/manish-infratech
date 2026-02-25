@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,76 +6,68 @@
 
 @layer base {
   :root {
-    /* White + Blue + Red theme */
-    --background: oklch(0.97 0.005 240);
-    --foreground: oklch(0.13 0.02 240);
+    --background: oklch(0.98 0.005 60);
+    --foreground: oklch(0.15 0.02 260);
 
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.13 0.02 240);
+    --card-foreground: oklch(0.15 0.02 260);
 
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.13 0.02 240);
+    --popover-foreground: oklch(0.15 0.02 260);
 
-    /* Deep Navy Blue primary */
-    --primary: oklch(0.32 0.12 255);
-    --primary-foreground: oklch(1 0 0);
+    --primary: oklch(0.45 0.18 25);
+    --primary-foreground: oklch(0.98 0.005 60);
 
-    /* Light blue-gray secondary */
-    --secondary: oklch(0.94 0.02 240);
-    --secondary-foreground: oklch(0.25 0.05 240);
+    --secondary: oklch(0.92 0.01 60);
+    --secondary-foreground: oklch(0.25 0.02 260);
 
-    --muted: oklch(0.94 0.01 240);
-    --muted-foreground: oklch(0.45 0.03 240);
+    --muted: oklch(0.94 0.008 60);
+    --muted-foreground: oklch(0.55 0.02 260);
 
-    /* Red accent */
-    --accent: oklch(0.50 0.22 25);
-    --accent-foreground: oklch(1 0 0);
+    --accent: oklch(0.90 0.02 25);
+    --accent-foreground: oklch(0.35 0.15 25);
 
-    --destructive: oklch(0.50 0.22 25);
-    --destructive-foreground: oklch(1 0 0);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.98 0.005 60);
 
-    --border: oklch(0.85 0.03 240);
-    --input: oklch(0.85 0.03 240);
-    --ring: oklch(0.32 0.12 255);
+    --border: oklch(0.88 0.01 60);
+    --input: oklch(0.88 0.01 60);
+    --ring: oklch(0.45 0.18 25);
+
+    --success: oklch(0.55 0.15 145);
+    --warning: oklch(0.75 0.15 75);
 
     --radius: 0.5rem;
-
-    /* Success green */
-    --success: oklch(0.52 0.17 145);
-    --success-foreground: oklch(1 0 0);
   }
 
   .dark {
-    --background: oklch(0.13 0.02 240);
-    --foreground: oklch(0.95 0.01 240);
+    --background: oklch(0.12 0.02 260);
+    --foreground: oklch(0.95 0.005 60);
 
-    --card: oklch(0.18 0.03 240);
-    --card-foreground: oklch(0.95 0.01 240);
+    --card: oklch(0.17 0.02 260);
+    --card-foreground: oklch(0.95 0.005 60);
 
-    --popover: oklch(0.18 0.03 240);
-    --popover-foreground: oklch(0.95 0.01 240);
+    --popover: oklch(0.17 0.02 260);
+    --popover-foreground: oklch(0.95 0.005 60);
 
-    --primary: oklch(0.55 0.15 255);
-    --primary-foreground: oklch(1 0 0);
+    --primary: oklch(0.60 0.18 25);
+    --primary-foreground: oklch(0.98 0.005 60);
 
-    --secondary: oklch(0.22 0.04 240);
-    --secondary-foreground: oklch(0.85 0.02 240);
+    --secondary: oklch(0.22 0.02 260);
+    --secondary-foreground: oklch(0.90 0.005 60);
 
-    --muted: oklch(0.22 0.04 240);
-    --muted-foreground: oklch(0.60 0.03 240);
+    --muted: oklch(0.22 0.02 260);
+    --muted-foreground: oklch(0.65 0.02 260);
 
-    --accent: oklch(0.55 0.22 25);
-    --accent-foreground: oklch(1 0 0);
+    --accent: oklch(0.25 0.05 25);
+    --accent-foreground: oklch(0.85 0.05 25);
 
     --destructive: oklch(0.55 0.22 25);
-    --destructive-foreground: oklch(1 0 0);
+    --destructive-foreground: oklch(0.98 0.005 60);
 
-    --border: oklch(0.28 0.04 240);
-    --input: oklch(0.28 0.04 240);
-    --ring: oklch(0.55 0.15 255);
-
-    --success: oklch(0.55 0.17 145);
-    --success-foreground: oklch(1 0 0);
+    --border: oklch(0.28 0.02 260);
+    --input: oklch(0.28 0.02 260);
+    --ring: oklch(0.60 0.18 25);
   }
 }
 
@@ -83,47 +75,85 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    line-height: 1.6;
-    color: oklch(0.13 0.02 240);
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Poppins', sans-serif;
-    color: oklch(0.13 0.02 240);
-    font-weight: 700;
-  }
-
-  input, textarea, select {
-    color: oklch(0.13 0.02 240);
-  }
-
-  input::placeholder, textarea::placeholder {
-    color: oklch(0.55 0.03 240);
-  }
-
-  label {
-    color: oklch(0.20 0.03 240);
-    font-weight: 500;
   }
 }
 
+/* ============================================================
+   PRINT STYLES — hide all screen chrome, show only invoice
+   ============================================================ */
 @media print {
-  .no-print {
+  /* Hide navigation header and all screen-only UI */
+  .no-print,
+  header,
+  nav,
+  footer,
+  .print-hide {
     display: none !important;
+    visibility: hidden !important;
   }
 
+  /* Reset page margins and background */
+  @page {
+    margin: 10mm 12mm;
+    size: A4 portrait;
+  }
+
+  html,
   body {
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
     color: black !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  @page {
-    margin: 10mm;
-    size: A4;
+  /* Make the print container fill the page */
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure invoice content is visible */
+  .print-content,
+  .invoice-print-view {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+  }
+
+  /* Prevent page breaks inside table rows */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Avoid page breaks after headings */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+  }
+
+  /* Avoid orphaned table headers */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Remove box shadows and borders that don't print well */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Ensure background colors print (for red header band) */
+  .print-bg-red {
+    background-color: #c0392b !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

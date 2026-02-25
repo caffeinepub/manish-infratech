@@ -1,84 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useGetAllBills } from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
 import BillResultsTable from '../components/BillResultsTable';
-import { Search, Loader2 } from 'lucide-react';
 
 export default function SearchBillsPage() {
   const [query, setQuery] = useState('');
-  const { data: allBills = [], isLoading } = useGetAllBills();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { data: bills = [], isLoading, isError } = useGetAllBills();
 
-  const filtered = query.trim()
-    ? allBills.filter(
-        bill =>
-          bill.partyName.toLowerCase().includes(query.toLowerCase()) ||
-          bill.invoiceNumber.toLowerCase().includes(query.toLowerCase())
-      )
-    : allBills;
+  const filtered = useMemo(() => {
+    if (!query.trim()) return bills;
+    const q = query.toLowerCase();
+    return bills.filter(
+      (b) =>
+        b.partyName.toLowerCase().includes(q) ||
+        b.invoiceNumber.toLowerCase().includes(q)
+    );
+  }, [bills, query]);
+
+  const isConnecting = actorFetching && !actor;
+  const hasError = !actorFetching && !actor;
+
+  if (isConnecting) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
+        <div className="flex items-center justify-center py-16">
+          <div className="flex flex-col items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm">Connecting to server…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasError || isError) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <AlertCircle className="h-10 w-10 text-destructive" />
+          <p className="text-base font-semibold text-foreground">
+            Unable to connect to server. Please refresh and try again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="mb-6">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-          <div style={{ backgroundColor: '#1e3a8a', borderRadius: '8px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Search size={20} color="#ffffff" />
-          </div>
-          <div>
-            <h1 style={{ color: '#1e3a8a', fontSize: '22px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-              Search Bills
-            </h1>
-            <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
-              Search and manage your invoices
-            </p>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
+
+      <div className="relative mb-6">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search by party name or invoice number…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+        />
       </div>
 
-      {/* Search Card */}
-      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', padding: '18px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
-        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1e3a8a', marginBottom: '8px' }}>
-          Search by Party Name or Invoice Number
-        </label>
-        <div style={{ position: 'relative' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Type to search..."
-            style={{
-              width: '100%',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '10px 12px 10px 36px',
-              fontSize: '14px',
-              color: '#1a1a2e',
-              backgroundColor: '#ffffff',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-            onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-            onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-          />
-        </div>
-      </div>
-
-      {/* Results */}
       {isLoading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '10px' }}>
-          <Loader2 size={24} color="#1e3a8a" className="animate-spin" />
-          <span style={{ color: '#64748b', fontSize: '15px' }}>Loading bills...</span>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
-        <div>
-          <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ color: '#374151', fontSize: '13px', fontWeight: 500 }}>
-              {filtered.length} bill{filtered.length !== 1 ? 's' : ''} found
-              {query && ` for "${query}"`}
-            </span>
-          </div>
+        <>
+          <p className="text-sm text-muted-foreground mb-3">
+            {filtered.length} bill{filtered.length !== 1 ? 's' : ''} found
+            {query ? ` for "${query}"` : ''}
+          </p>
           <BillResultsTable bills={filtered} />
-        </div>
+        </>
       )}
     </div>
   );

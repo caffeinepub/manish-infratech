@@ -26,6 +26,7 @@ export interface Bill {
 }
 export interface BillOperation {
   'lineItems' : Array<LineItem>,
+  'amountPaid' : number,
   'billDate' : bigint,
   'invoiceNumber' : string,
   'partyName' : string,

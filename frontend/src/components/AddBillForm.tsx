@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAddBill, useGetUniquePartyNames, useGetUniqueProductNames } from '../hooks/useQueries';
-import { LineItem } from '../backend';
+import { useActor } from '../hooks/useActor';
 import AutocompleteInput from './AutocompleteInput';
-import { CheckCircle, Plus, Trash2, Loader2 } from 'lucide-react';
+import { formatINR } from '../utils/formatCurrency';
+import { Plus, Trash2, Loader2, CheckCircle, AlertCircle, WifiOff } from 'lucide-react';
+import type { LineItem } from '../backend';
 
-interface LineItemForm {
+interface LineItemRow {
   srNo: number;
   hsnCode: string;
   productName: string;
@@ -14,62 +16,28 @@ interface LineItemForm {
   totalAmount: number;
 }
 
-const emptyLineItem = (srNo: number): LineItemForm => ({
-  srNo,
-  hsnCode: '',
-  productName: '',
-  quantity: '',
-  unit: '',
-  rate: '',
-  totalAmount: 0,
-});
-
-const getTodayString = () => {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
+function emptyRow(srNo: number): LineItemRow {
+  return { srNo, hsnCode: '', productName: '', quantity: '', unit: '', rate: '', totalAmount: 0 };
+}
 
 export default function AddBillForm() {
-  const [partyName, setPartyName] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [billDate, setBillDate] = useState(getTodayString());
-  const [lineItems, setLineItems] = useState<LineItemForm[]>([emptyLineItem(1)]);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const addBillMutation = useAddBill();
+  const { actor, isFetching: actorFetching } = useActor();
+  const addBill = useAddBill();
   const { data: partyNames = [] } = useGetUniquePartyNames();
   const { data: productNames = [] } = useGetUniqueProductNames();
 
-  const updateLineItem = (index: number, field: keyof LineItemForm, value: string) => {
-    setLineItems(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      const qty = parseFloat(updated[index].quantity) || 0;
-      const rate = parseFloat(updated[index].rate) || 0;
-      updated[index].totalAmount = qty * rate;
-      return updated;
-    });
-  };
+  const [partyName, setPartyName] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [amountPaid, setAmountPaid] = useState('');
+  const [lineItems, setLineItems] = useState<LineItemRow[]>([emptyRow(1)]);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const addLineItem = () => {
-    if (lineItems.length < 15) {
-      setLineItems(prev => [...prev, emptyLineItem(prev.length + 1)]);
-    }
-  };
+  const actorReady = !!actor && !actorFetching;
 
-  const removeLineItem = (index: number) => {
-    if (lineItems.length > 1) {
-      setLineItems(prev =>
-        prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, srNo: i + 1 }))
-      );
-    }
-  };
-
-  const baseAmount = lineItems.reduce((sum, item) => sum + item.totalAmount, 0);
+  // Computed totals
+  const baseAmount = lineItems.reduce((s, r) => s + r.totalAmount, 0);
   const totalGst = baseAmount * 0.18;
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;
@@ -77,351 +45,334 @@ export default function AddBillForm() {
   const roundOff = Math.round(finalAmountRaw) - finalAmountRaw;
   const finalAmount = Math.round(finalAmountRaw);
 
-  const formatINR = (amount: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
+  const updateRow = useCallback((idx: number, field: keyof LineItemRow, value: string) => {
+    setLineItems((prev) => {
+      const updated = [...prev];
+      const row = { ...updated[idx], [field]: value };
+      if (field === 'quantity' || field === 'rate') {
+        const qty = parseFloat(field === 'quantity' ? value : row.quantity) || 0;
+        const rate = parseFloat(field === 'rate' ? value : row.rate) || 0;
+        row.totalAmount = parseFloat((qty * rate).toFixed(2));
+      }
+      updated[idx] = row;
+      return updated;
+    });
+  }, []);
+
+  const addRow = () => {
+    if (lineItems.length >= 15) return;
+    setLineItems((prev) => [...prev, emptyRow(prev.length + 1)]);
+  };
+
+  const removeRow = (idx: number) => {
+    setLineItems((prev) => {
+      const updated = prev.filter((_, i) => i !== idx).map((r, i) => ({ ...r, srNo: i + 1 }));
+      return updated.length === 0 ? [emptyRow(1)] : updated;
+    });
+  };
+
+  const resetForm = () => {
+    setPartyName('');
+    setInvoiceNumber('');
+    setBillDate(new Date().toISOString().split('T')[0]);
+    setAmountPaid('');
+    setLineItems([emptyRow(1)]);
+    setErrorMsg('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
+    setSuccessMsg('');
+    setErrorMsg('');
 
-    if (!partyName.trim()) { setErrorMessage('Party name is required.'); return; }
-    if (!invoiceNumber.trim()) { setErrorMessage('Invoice number is required.'); return; }
-    if (!billDate) { setErrorMessage('Bill date is required.'); return; }
+    if (!actorReady) {
+      setErrorMsg('Unable to connect to server. Please refresh the page and try again.');
+      return;
+    }
+    if (!partyName.trim()) { setErrorMsg('Party name is required.'); return; }
+    if (!invoiceNumber.trim()) { setErrorMsg('Invoice number is required.'); return; }
+    if (!billDate) { setErrorMsg('Bill date is required.'); return; }
 
-    const validItems = lineItems.filter(
-      item => item.productName.trim() && parseFloat(item.quantity) > 0 && parseFloat(item.rate) > 0
-    );
-    if (validItems.length === 0) { setErrorMessage('At least one valid line item is required.'); return; }
+    const validItems = lineItems.filter((r) => r.productName.trim() && r.totalAmount > 0);
+    if (validItems.length === 0) {
+      setErrorMsg('At least one line item with a product name and amount is required.');
+      return;
+    }
 
-    const billDateMs = new Date(billDate).getTime();
-    const billDateNs = BigInt(billDateMs) * 1_000_000n;
+    const billDateNano = BigInt(new Date(billDate).getTime()) * 1_000_000n;
+    const paidAmount = parseFloat(amountPaid) || 0;
 
-    const backendLineItems: LineItem[] = validItems.map((item, idx) => ({
-      srNo: BigInt(idx + 1),
-      hsnCode: item.hsnCode.trim(),
-      productName: item.productName.trim(),
-      quantity: parseFloat(item.quantity),
-      unit: item.unit.trim(),
-      rate: parseFloat(item.rate),
-      totalAmount: item.totalAmount,
+    const items: LineItem[] = validItems.map((r) => ({
+      srNo: BigInt(r.srNo),
+      hsnCode: r.hsnCode,
+      productName: r.productName,
+      quantity: parseFloat(r.quantity) || 0,
+      unit: r.unit,
+      rate: parseFloat(r.rate) || 0,
+      totalAmount: r.totalAmount,
     }));
 
     try {
-      await addBillMutation.mutateAsync({
+      await addBill.mutateAsync({
         partyName: partyName.trim(),
         invoiceNumber: invoiceNumber.trim(),
-        billDate: billDateNs,
-        lineItems: backendLineItems,
+        billDate: billDateNano,
+        lineItems: items,
+        amountPaid: paidAmount,
       });
-
-      setSuccessMessage(`✓ Bill saved successfully! Invoice #${invoiceNumber}`);
-      setPartyName('');
-      setInvoiceNumber('');
-      setBillDate(getTodayString());
-      setLineItems([emptyLineItem(1)]);
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to save bill. Please try again.');
+      setSuccessMsg(`Bill ${invoiceNumber.trim()} saved successfully!`);
+      resetForm();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg.includes('already exists') ? `Invoice number "${invoiceNumber}" already exists. Please use a unique invoice number.` : msg);
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    border: '1.5px solid #cbd5e1',
-    borderRadius: '6px',
-    padding: '8px 10px',
-    fontSize: '14px',
-    color: '#1a1a2e',
-    backgroundColor: '#ffffff',
-    outline: 'none',
-    width: '100%',
-    transition: 'border-color 0.15s ease',
-    boxSizing: 'border-box',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#1e3a8a',
-    marginBottom: '4px',
-  };
-
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Main Card */}
-      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '12px', boxShadow: '0 2px 8px rgba(30,58,138,0.08)', overflow: 'hidden' }}>
-        {/* Card Header */}
-        <div style={{ backgroundColor: '#1e3a8a', padding: '14px 20px' }}>
-          <h2 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-            Bill Details
-          </h2>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Actor not ready warning */}
+      {!actorReady && !actorFetching && (
+        <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 flex items-center gap-2 text-sm text-destructive">
+          <WifiOff className="w-4 h-4 shrink-0" />
+          Unable to connect to server. Please refresh the page and try again.
         </div>
+      )}
 
-        <div style={{ padding: '20px' }}>
-          {/* Basic Info Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <div>
-              <label style={labelStyle}>Party Name *</label>
-              <AutocompleteInput
-                suggestions={partyNames}
-                value={partyName}
-                onValueChange={setPartyName}
-                onChange={e => setPartyName(e.target.value)}
-                placeholder="Enter party name"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Invoice Number *</label>
-              <input
-                type="text"
-                value={invoiceNumber}
-                onChange={e => setInvoiceNumber(e.target.value)}
-                placeholder="e.g. INV-001"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Bill Date *</label>
-              <input
-                type="date"
-                value={billDate}
-                onChange={e => setBillDate(e.target.value)}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-              />
-            </div>
+      {/* Success message */}
+      {successMsg && (
+        <div className="p-3 rounded-lg border border-green-300 bg-green-50 flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          {successMsg}
+        </div>
+      )}
+
+      {/* Error message */}
+      {errorMsg && (
+        <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Bill details */}
+      <div className="p-5 rounded-xl border border-border bg-card shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">Bill Details</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Party Name *</label>
+            <AutocompleteInput
+              value={partyName}
+              onChange={(e) => setPartyName(e.target.value)}
+              onValueChange={setPartyName}
+              suggestions={partyNames}
+              placeholder="Enter party name"
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              required
+            />
           </div>
-
-          {/* Line Items Section */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <h3 style={{ color: '#1e3a8a', fontSize: '15px', fontWeight: 700, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-                Line Items
-              </h3>
-              <button
-                type="button"
-                onClick={addLineItem}
-                disabled={lineItems.length >= 15}
-                style={{
-                  backgroundColor: lineItems.length >= 15 ? '#e2e8f0' : '#1e3a8a',
-                  color: lineItems.length >= 15 ? '#94a3b8' : '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: lineItems.length >= 15 ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Plus size={14} />
-                Add Item
-              </button>
-            </div>
-
-            {/* Line Items Table */}
-            <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1.5px solid #bfdbfe' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#1e3a8a' }}>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '50px' }}>Sr. No.</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'left', width: '110px' }}>HSN Code</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'left' }}>Product Name</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '80px' }}>Qty</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '80px' }}>Unit</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'right', width: '100px' }}>Rate (₹)</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'right', width: '110px' }}>Amount (₹)</th>
-                    <th style={{ color: '#ffffff', padding: '10px 8px', fontSize: '12px', fontWeight: 700, textAlign: 'center', width: '50px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lineItems.map((item, index) => (
-                    <tr key={index} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff', borderBottom: '1px solid #dbeafe' }}>
-                      <td style={{ padding: '6px 8px', textAlign: 'center', color: '#1e3a8a', fontWeight: 600, fontSize: '13px' }}>
-                        {item.srNo}
-                      </td>
-                      <td style={{ padding: '6px 8px' }}>
-                        <input
-                          type="text"
-                          value={item.hsnCode}
-                          onChange={e => updateLineItem(index, 'hsnCode', e.target.value)}
-                          placeholder="HSN Code"
-                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px' }}
-                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-                        />
-                      </td>
-                      <td style={{ padding: '6px 8px' }}>
-                        <AutocompleteInput
-                          suggestions={productNames}
-                          value={item.productName}
-                          onValueChange={val => updateLineItem(index, 'productName', val)}
-                          onChange={e => updateLineItem(index, 'productName', e.target.value)}
-                          placeholder="Product Name"
-                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px' }}
-                        />
-                      </td>
-                      <td style={{ padding: '6px 8px' }}>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={e => updateLineItem(index, 'quantity', e.target.value)}
-                          placeholder="Qty"
-                          min="0"
-                          step="any"
-                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'center' }}
-                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-                        />
-                      </td>
-                      <td style={{ padding: '6px 8px' }}>
-                        <input
-                          type="text"
-                          value={item.unit}
-                          onChange={e => updateLineItem(index, 'unit', e.target.value)}
-                          placeholder="Unit"
-                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'center' }}
-                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-                        />
-                      </td>
-                      <td style={{ padding: '6px 8px' }}>
-                        <input
-                          type="number"
-                          value={item.rate}
-                          onChange={e => updateLineItem(index, 'rate', e.target.value)}
-                          placeholder="Rate"
-                          min="0"
-                          step="any"
-                          style={{ ...inputStyle, padding: '5px 7px', fontSize: '13px', textAlign: 'right' }}
-                          onFocus={e => { e.target.style.borderColor = '#1e3a8a'; }}
-                          onBlur={e => { e.target.style.borderColor = '#cbd5e1'; }}
-                        />
-                      </td>
-                      <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1a1a2e', fontWeight: 600, fontSize: '13px' }}>
-                        {formatINR(item.totalAmount)}
-                      </td>
-                      <td style={{ padding: '6px 8px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => removeLineItem(index)}
-                          disabled={lineItems.length === 1}
-                          style={{
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            cursor: lineItems.length === 1 ? 'not-allowed' : 'pointer',
-                            color: lineItems.length === 1 ? '#cbd5e1' : '#dc2626',
-                            padding: '4px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Invoice Number *</label>
+            <input
+              type="text"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+              placeholder="e.g. INV-001"
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              required
+            />
           </div>
-
-          {/* GST Summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '8px', padding: '14px' }}>
-              <h4 style={{ color: '#1e3a8a', fontSize: '13px', fontWeight: 700, margin: '0 0 10px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                GST Breakdown
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  { label: 'Base Amount', value: formatINR(baseAmount) },
-                  { label: 'CGST (9%)', value: formatINR(cgst) },
-                  { label: 'SGST (9%)', value: formatINR(sgst) },
-                  { label: 'Total GST (18%)', value: formatINR(totalGst) },
-                  { label: 'Round Off', value: `${roundOff >= 0 ? '+' : ''}${roundOff.toFixed(2)}` },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ color: '#475569' }}>{label}</span>
-                    <span style={{ color: '#1a1a2e', fontWeight: 500 }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ backgroundColor: '#1e3a8a', border: '1.5px solid #1e3a8a', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', margin: '0 0 6px 0', fontWeight: 500 }}>
-                Total Invoice Amount
-              </p>
-              <p style={{ color: '#ffffff', fontSize: '28px', fontWeight: 800, margin: 0, fontFamily: 'Poppins, sans-serif' }}>
-                {formatINR(finalAmount)}
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '11px', margin: '4px 0 0 0' }}>
-                Inclusive of 18% GST
-              </p>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Bill Date *</label>
+            <input
+              type="date"
+              value={billDate}
+              onChange={(e) => setBillDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              required
+            />
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">Amount Paid (₹)</label>
+            <input
+              type="number"
+              value={amountPaid}
+              onChange={(e) => setAmountPaid(e.target.value)}
+              placeholder="0.00"
+              min="0"
+              step="any"
+              className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+        </div>
+      </div>
 
-          {/* Messages */}
-          {errorMessage && (
-            <div style={{ backgroundColor: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#dc2626', fontSize: '14px', fontWeight: 500 }}>
-              ⚠ {errorMessage}
-            </div>
-          )}
-          {successMessage && (
-            <div style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: '#16a34a', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckCircle size={16} color="#16a34a" />
-              {successMessage}
-            </div>
-          )}
-
-          {/* Submit Button */}
+      {/* Line items */}
+      <div className="p-5 rounded-xl border border-border bg-card shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-foreground">Line Items</h2>
+          <span className="text-xs text-muted-foreground">{lineItems.length}/15 items</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#1a2744] text-white">
+                <th className="px-2 py-2 text-center font-semibold w-10">Sr.</th>
+                <th className="px-2 py-2 text-left font-semibold w-24">HSN Code</th>
+                <th className="px-2 py-2 text-left font-semibold min-w-[160px]">Product Name</th>
+                <th className="px-2 py-2 text-right font-semibold w-20">Qty</th>
+                <th className="px-2 py-2 text-left font-semibold w-20">Unit</th>
+                <th className="px-2 py-2 text-right font-semibold w-24">Rate ₹</th>
+                <th className="px-2 py-2 text-right font-semibold w-28">Amount ₹</th>
+                <th className="px-2 py-2 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((row, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
+                  <td className="px-2 py-1.5 text-center text-muted-foreground">{row.srNo}</td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={row.hsnCode}
+                      onChange={(e) => updateRow(idx, 'hsnCode', e.target.value)}
+                      placeholder="HSN"
+                      className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <AutocompleteInput
+                      value={row.productName}
+                      onChange={(e) => updateRow(idx, 'productName', e.target.value)}
+                      onValueChange={(v) => updateRow(idx, 'productName', v)}
+                      suggestions={productNames}
+                      placeholder="Product name"
+                      className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="number"
+                      value={row.quantity}
+                      onChange={(e) => updateRow(idx, 'quantity', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={row.unit}
+                      onChange={(e) => updateRow(idx, 'unit', e.target.value)}
+                      placeholder="e.g. Nos"
+                      className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="number"
+                      value={row.rate}
+                      onChange={(e) => updateRow(idx, 'rate', e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="any"
+                      className="w-full px-2 py-1 rounded border border-border bg-background text-foreground text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-medium text-foreground">
+                    {row.totalAmount > 0 ? formatINR(row.totalAmount) : '—'}
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(idx)}
+                      className="p-1 rounded text-muted-foreground hover:text-destructive transition"
+                      title="Remove row"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {lineItems.length < 15 && (
           <button
-            type="submit"
-            disabled={addBillMutation.isPending}
-            style={{
-              backgroundColor: addBillMutation.isPending ? '#94a3b8' : '#1e3a8a',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '12px 28px',
-              fontSize: '15px',
-              fontWeight: 700,
-              cursor: addBillMutation.isPending ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontFamily: 'Poppins, sans-serif',
-              transition: 'background-color 0.15s ease',
-              width: '100%',
-              justifyContent: 'center',
-            }}
-            onMouseEnter={e => {
-              if (!addBillMutation.isPending) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1e40af';
-            }}
-            onMouseLeave={e => {
-              if (!addBillMutation.isPending) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1e3a8a';
-            }}
+            type="button"
+            onClick={addRow}
+            className="mt-3 flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition"
           >
-            {addBillMutation.isPending ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Saving Bill...
-              </>
-            ) : (
-              <>
-                <CheckCircle size={16} />
-                Save Bill
-              </>
-            )}
+            <Plus className="w-4 h-4" />
+            Add Row
           </button>
+        )}
+      </div>
+
+      {/* GST Summary */}
+      <div className="p-5 rounded-xl border border-border bg-card shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">GST Summary</h2>
+        <div className="max-w-xs ml-auto space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Base Amount</span>
+            <span className="font-medium text-foreground">{formatINR(baseAmount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">CGST (9%)</span>
+            <span className="font-medium text-foreground">{formatINR(cgst)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">SGST (9%)</span>
+            <span className="font-medium text-foreground">{formatINR(sgst)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Round Off</span>
+            <span className="font-medium text-foreground">{roundOff >= 0 ? '+' : ''}{roundOff.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-t border-border pt-2">
+            <span className="font-bold text-foreground">Final Amount</span>
+            <span className="font-bold text-primary text-base">{formatINR(finalAmount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Amount Paid</span>
+            <span className="font-medium text-green-600">{formatINR(parseFloat(amountPaid) || 0)}</span>
+          </div>
+          <div className="flex justify-between border-t border-border pt-2">
+            <span className="font-semibold text-foreground">Pending Amount</span>
+            <span className={`font-semibold ${finalAmount - (parseFloat(amountPaid) || 0) > 0 ? 'text-destructive' : 'text-green-600'}`}>
+              {formatINR(Math.max(0, finalAmount - (parseFloat(amountPaid) || 0)))}
+            </span>
+          </div>
         </div>
+      </div>
+
+      {/* Submit */}
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={!actorReady || addBill.isPending}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {addBill.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving…
+            </>
+          ) : actorFetching ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Connecting…
+            </>
+          ) : !actorReady ? (
+            <>
+              <WifiOff className="w-4 h-4" />
+              Not Connected
+            </>
+          ) : (
+            'Save Bill'
+          )}
+        </button>
       </div>
     </form>
   );
