@@ -1,43 +1,161 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add multi-line item table (up to 10 rows) to bills with Sr. No., HSN Code, Product Name, Amount, and GST per item",
+  "title": "GST on invoice, editable bill date, 30 line items, report downloads, and autocomplete suggestions",
   "requirements": [
     {
-      "id": "REQ-11",
-      "summary": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows, auto-computed GST per item, and live aggregated totals",
+      "id": "REQ-31",
+      "summary": "Display party GST number on printed invoice",
       "acceptanceCriteria": [
-        "The Add Bill form contains a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹).",
-        "Sr. No. is auto-incremented starting from 1 for each row.",
-        "GST per row is automatically computed as 18% of the item amount and displayed (read-only).",
-        "Users can add rows up to a maximum of 10.",
-        "Users can remove any row; Sr. No. values re-sequence automatically.",
-        "At least one item row is required before submitting.",
-        "The live GST breakdown summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) is updated in real time as item amounts change.",
-        "The form submits all line items along with party name and invoice number to the backend."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AddBillForm.tsx",
-          "operation": "modify",
-          "description": "Replace the single 'Base Amount' field with a dynamic line item table component. Add state management for an array of line items (up to 10 rows), each containing srNo (auto-incremented), hsnCode (text), productName (text), amount (number), and computed itemGst (18% of amount). Implement 'Add Row' button (disabled after 10 rows) and 'Remove Row' action per row. Ensure Sr. No. re-sequences automatically when rows are removed. Compute aggregated baseAmount (sum of all item amounts), totalGst (sum of all itemGst), CGST (9% of baseAmount), SGST (9% of baseAmount), roundOff, and finalAmount in real-time. Display the live GST breakdown summary below the table. Validate that at least one line item exists before submission. Update the useAddBill mutation call to pass the lineItems array instead of baseAmount. Use the backend interface type LineItem from frontend/src/backend.d.ts for type safety."
-        }
-      ]
-    },
-    {
-      "id": "REQ-12",
-      "summary": "Update the invoice print view to include the line item table with Sr. No., HSN Code, Product Name, Amount, and GST columns",
-      "acceptanceCriteria": [
-        "The printed invoice includes a line item table with Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹) columns.",
-        "All line items saved on the bill are displayed in the table.",
-        "The GST summary section (CGST, SGST, round-off, final amount) still appears below the item table.",
-        "The print layout remains clean and professional, consistent with the existing navy and saffron theme."
+        "When printing/viewing an invoice for a party that has a stored GST number, the GST number appears in the invoice header beneath the party name.",
+        "The label reads 'GST No:' followed by the GST number value.",
+        "When no GST number is stored for the party, the GST No line is not rendered in the print view."
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/InvoicePrintView.tsx",
           "operation": "modify",
-          "description": "Add a line item table section between the invoice header and the existing GST breakdown table. Display columns for Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹). Iterate over the bill.lineItems array and render each item as a table row with formatted currency values using the formatCurrency utility. Ensure the table styling is consistent with the existing print layout using the navy and saffron theme. Position the line item table above the existing amount breakdown table so the flow reads: header → line items → GST summary → footer."
+          "description": "Add a query to fetch the party's GST number using the getPartyGstNumber backend method. Display the GST number beneath the party name in the invoice header section, formatted as 'GST No: <value>'. Conditionally render the GST line only when a non-empty GST number is returned from the backend."
+        }
+      ]
+    },
+    {
+      "id": "REQ-32",
+      "summary": "Add editable Bill Date field to bill forms",
+      "acceptanceCriteria": [
+        "The Add Bill form shows a date input defaulting to today's date when opened.",
+        "The user can change the date to any value before saving.",
+        "The Edit Bill modal shows the existing bill date pre-filled in the date input.",
+        "The submitted bill date is correctly stored in the backend as a Unix timestamp in nanoseconds.",
+        "The bill date is visible in BillResultsTable, CompanyReportPage, and InvoicePrintView."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Add a date input field labeled 'Bill Date' that defaults to today's date. Allow the user to change the date before submission. Convert the selected date to a Unix timestamp in nanoseconds and include it in the billDate field of the BillOperation payload when calling the addBill backend method."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Add a date input field labeled 'Bill Date' that pre-fills with the existing bill's billDate (converted from nanoseconds timestamp to a date). Allow the user to change the date. Convert the selected date to a Unix timestamp in nanoseconds and include it in the billDate field of the updated BillOperation payload when calling the editBill backend method."
+        },
+        {
+          "path": "frontend/src/components/BillResultsTable.tsx",
+          "operation": "modify",
+          "description": "Add a 'Bill Date' column that displays each bill's billDate (converted from nanoseconds timestamp to a readable date format). Position the column after the Invoice No. column."
+        },
+        {
+          "path": "frontend/src/pages/CompanyReportPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the bills table displays the billDate column for each bill. Convert the nanoseconds timestamp to a readable date format for display."
+        },
+        {
+          "path": "frontend/src/components/InvoicePrintView.tsx",
+          "operation": "modify",
+          "description": "Display the bill's billDate in the invoice header section (converted from nanoseconds timestamp to a readable date format), labeled as 'Bill Date' or 'Invoice Date'."
+        }
+      ]
+    },
+    {
+      "id": "REQ-33",
+      "summary": "Increase maximum line items from 10 to 30",
+      "acceptanceCriteria": [
+        "The Add Bill form allows adding up to 30 line item rows.",
+        "The Edit Bill modal allows up to 30 line item rows.",
+        "The 'Add Row' button is disabled or hidden once 30 rows exist.",
+        "The backend accepts and persists bills with up to 30 line items without error."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Change the maximum allowed line items from 10 to 30. Disable or hide the 'Add Row' button when 30 rows are present. Ensure the form can handle and submit up to 30 line items to the backend."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Change the maximum allowed line items from 10 to 30. Disable or hide the 'Add Row' button when 30 rows are present. Ensure the modal can handle and submit up to 30 line items when editing a bill."
+        }
+      ]
+    },
+    {
+      "id": "REQ-34",
+      "summary": "Add 'Download Report' button on SummaryPage for total CSV export",
+      "acceptanceCriteria": [
+        "A 'Download Report' button is visible on the SummaryPage.",
+        "Clicking it triggers a browser download of a CSV file.",
+        "The CSV contains the specified columns for all bills (filtered by active date range if set).",
+        "The filename is descriptive, e.g. 'manish-infratech-total-report.csv'."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/SummaryPage.tsx",
+          "operation": "modify",
+          "description": "Add a 'Download Report' button that fetches all bills (applying the active date-range filter if set) via getAllBills or getPartySummaryByDateRange. Generate a CSV file with columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. For each party, fetch the GST number using getPartyGstNumber. Use browser-native CSV generation (no external libraries) and trigger a download with filename 'manish-infratech-total-report.csv'."
+        }
+      ]
+    },
+    {
+      "id": "REQ-35",
+      "summary": "Add 'Download Report' button on CompanyReportPage for party CSV export",
+      "acceptanceCriteria": [
+        "A 'Download Report' button is visible on the CompanyReportPage.",
+        "Clicking it triggers a browser download of a CSV file named after the party (e.g. 'party-name-report.csv').",
+        "The CSV contains the specified columns for all bills shown (filtered by active date range if set).",
+        "The party name and GST number appear in the first two rows of the CSV as a header block."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/CompanyReportPage.tsx",
+          "operation": "modify",
+          "description": "Add a 'Download Report' button that generates a CSV export of the current party's report. Include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Fetch the party's GST number using getPartyGstNumber and include the party name and GST number in the first two rows as a header block. Use browser-native CSV generation and trigger a download with filename '<party-name>-report.csv'."
+        }
+      ]
+    },
+    {
+      "id": "REQ-36",
+      "summary": "Implement autocomplete suggestions for Party Name input",
+      "acceptanceCriteria": [
+        "Typing in the Party Name field shows a filtered dropdown of previously used party names.",
+        "The suggestions are fetched from the backend (unique party names from existing bills or party profiles).",
+        "Selecting a suggestion from the dropdown populates the Party Name field.",
+        "The dropdown closes when a selection is made or the user clicks away.",
+        "If no suggestions match the current input, the dropdown is hidden."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Replace the Party Name text input with an autocomplete input that fetches party name suggestions from the backend using the getPartyNames method. As the user types, filter and display matching party names in a dropdown. When a suggestion is selected, populate the Party Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Replace the Party Name text input with an autocomplete input that fetches party name suggestions from the backend using the getPartyNames method. As the user types, filter and display matching party names in a dropdown. When a suggestion is selected, populate the Party Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
+        }
+      ]
+    },
+    {
+      "id": "REQ-37",
+      "summary": "Implement autocomplete suggestions for Product Name input in line items",
+      "acceptanceCriteria": [
+        "Typing in any Product Name cell within the line items table shows a filtered dropdown of previously used product names.",
+        "The suggestions are sourced from all unique product names stored across existing bill line items.",
+        "Selecting a suggestion fills in the Product Name field for that row.",
+        "The dropdown closes when a selection is made or focus leaves the field.",
+        "The backend exposes a query to return all unique product names for the owner, or the frontend derives them from fetched bill data."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Replace each Product Name text input in the line items table with an autocomplete input. Fetch product name suggestions from the backend using the getProductNames method. As the user types in any Product Name cell, filter and display matching product names in a dropdown. When a suggestion is selected, populate that specific row's Product Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Replace each Product Name text input in the line items table with an autocomplete input. Fetch product name suggestions from the backend using the getProductNames method. As the user types in any Product Name cell, filter and display matching product names in a dropdown. When a suggestion is selected, populate that specific row's Product Name field. Ensure the dropdown closes on selection or blur, and hides when no matches are found."
         }
       ]
     }

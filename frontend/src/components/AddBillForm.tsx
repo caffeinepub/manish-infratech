@@ -1,358 +1,314 @@
-import { useState } from 'react';
-import { useAddBill } from '../hooks/useQueries';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { formatAmount } from '../utils/formatCurrency';
-import { Loader2, CheckCircle2, AlertCircle, Calculator, Receipt, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useCallback } from 'react';
+import { useAddBill, useBillExists, useGetPartyNames, useGetProductNames } from '../hooks/useQueries';
 import type { LineItem } from '../backend';
+import { formatCurrency } from '../utils/formatCurrency';
+import AutocompleteInput from './AutocompleteInput';
 
-const MAX_ROWS = 10;
-const GST_RATE = 0.18;
+const MAX_ROWS = 30;
+const UNIT_OPTIONS = ['SQM', 'RMT', 'PCS', 'KG', 'MTR', 'NOS', 'SET', 'JOB'];
 
-interface LineItemRow {
-  id: number;
+function todayDateString() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function dateToNanoseconds(dateStr: string): bigint {
+  const ms = new Date(dateStr).getTime();
+  return BigInt(ms) * BigInt(1_000_000);
+}
+
+interface RowData {
   hsnCode: string;
   productName: string;
-  amountStr: string;
+  quantity: string;
+  unit: string;
+  rate: string;
 }
 
-function computeItemGst(amount: number): number {
-  return amount * GST_RATE;
-}
-
-let rowIdCounter = 1;
-
-function createEmptyRow(): LineItemRow {
-  return { id: rowIdCounter++, hsnCode: '', productName: '', amountStr: '' };
-}
+const emptyRow = (): RowData => ({
+  hsnCode: '',
+  productName: '',
+  quantity: '',
+  unit: 'SQM',
+  rate: '',
+});
 
 export default function AddBillForm() {
   const [partyName, setPartyName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [rows, setRows] = useState<LineItemRow[]>([createEmptyRow()]);
-  const [savedBill, setSavedBill] = useState<{ invoiceNumber: string; finalAmount: number } | null>(null);
+  const [billDate, setBillDate] = useState(todayDateString());
+  const [rows, setRows] = useState<RowData[]>([emptyRow()]);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const { mutate: addBill, isPending, error } = useAddBill();
+  const addBillMutation = useAddBill();
+  const checkBillExists = useBillExists();
+  const { data: partyNames = [] } = useGetPartyNames();
+  const { data: productNames = [] } = useGetProductNames();
 
-  // ── Derived totals ──────────────────────────────────────────────────────────
-  const parsedAmounts = rows.map((r) => {
-    const v = parseFloat(r.amountStr);
-    return isNaN(v) || v < 0 ? 0 : v;
-  });
-  const baseAmount = parsedAmounts.reduce((s, v) => s + v, 0);
-  const totalGst = baseAmount * GST_RATE;
+  const updateRow = useCallback((idx: number, field: keyof RowData, value: string) => {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }, []);
+
+  const addRow = () => {
+    if (rows.length < MAX_ROWS) setRows(prev => [...prev, emptyRow()]);
+  };
+
+  const removeRow = (idx: number) => {
+    if (rows.length > 1) setRows(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const getRowTotal = (row: RowData): number => {
+    const qty = parseFloat(row.quantity) || 0;
+    const rate = parseFloat(row.rate) || 0;
+    return qty * rate;
+  };
+
+  const baseAmount = rows.reduce((sum, r) => sum + getRowTotal(r), 0);
+  const totalGst = baseAmount * 0.18;
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;
-  const rawTotal = baseAmount + totalGst;
-  const finalAmount = Math.round(rawTotal);
-  const roundOff = finalAmount - rawTotal;
-  const hasBreakdown = baseAmount > 0;
+  const finalAmountRaw = baseAmount + totalGst;
+  const finalAmountRounded = Math.round(finalAmountRaw);
+  const roundOff = finalAmountRounded - finalAmountRaw;
 
-  // ── Row management ──────────────────────────────────────────────────────────
-  const addRow = () => {
-    if (rows.length >= MAX_ROWS) return;
-    setRows((prev) => [...prev, createEmptyRow()]);
-  };
-
-  const removeRow = (id: number) => {
-    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
-  };
-
-  const updateRow = (id: number, field: keyof Omit<LineItemRow, 'id'>, value: string) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
-  };
-
-  // ── Submit ──────────────────────────────────────────────────────────────────
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partyName.trim() || !invoiceNumber.trim()) return;
+    setError('');
+    setSuccess('');
 
-    // Validate at least one row has a valid amount
-    const validRows = rows.filter((r) => {
-      const v = parseFloat(r.amountStr);
-      return !isNaN(v) && v > 0;
-    });
-    if (validRows.length === 0) {
-      toast.error('Please enter at least one item with a valid amount.');
-      return;
-    }
+    if (!partyName.trim()) { setError('Party name is required.'); return; }
+    if (!invoiceNumber.trim()) { setError('Invoice number is required.'); return; }
+    if (!billDate) { setError('Bill date is required.'); return; }
 
-    const lineItems: LineItem[] = rows
-      .filter((r) => {
-        const v = parseFloat(r.amountStr);
-        return !isNaN(v) && v > 0;
-      })
-      .map((r, idx) => {
-        const amount = parseFloat(r.amountStr);
-        return {
-          srNo: BigInt(idx + 1),
-          hsnCode: r.hsnCode.trim(),
-          productName: r.productName.trim(),
-          amount,
-          itemGst: computeItemGst(amount),
-        };
+    const validRows = rows.filter(r => r.productName.trim() || r.hsnCode.trim() || r.quantity || r.rate);
+    if (validRows.length === 0) { setError('At least one line item is required.'); return; }
+
+    try {
+      const exists = await checkBillExists(invoiceNumber.trim());
+      if (exists) { setError(`Invoice number '${invoiceNumber}' already exists.`); return; }
+
+      const lineItems: LineItem[] = validRows.map((r, i) => ({
+        srNo: BigInt(i + 1),
+        hsnCode: r.hsnCode.trim(),
+        productName: r.productName.trim(),
+        quantity: parseFloat(r.quantity) || 0,
+        unit: r.unit,
+        rate: parseFloat(r.rate) || 0,
+        totalAmount: getRowTotal(r),
+      }));
+
+      await addBillMutation.mutateAsync({
+        partyName: partyName.trim(),
+        invoiceNumber: invoiceNumber.trim(),
+        billDate: dateToNanoseconds(billDate),
+        lineItems,
       });
 
-    addBill(
-      { partyName: partyName.trim(), invoiceNumber: invoiceNumber.trim(), lineItems },
-      {
-        onSuccess: (bill) => {
-          setSavedBill({ invoiceNumber: bill.invoiceNumber, finalAmount: bill.finalAmount });
-          toast.success(`Bill saved! Final amount: ${formatAmount(bill.finalAmount)}`);
-          setPartyName('');
-          setInvoiceNumber('');
-          setRows([createEmptyRow()]);
-        },
-        onError: (err) => {
-          const msg = err instanceof Error ? err.message : 'Failed to save bill';
-          toast.error(msg.includes('already exists') ? 'Invoice number already exists' : msg);
-        },
-      }
-    );
+      setSuccess(`Bill ${invoiceNumber} added successfully!`);
+      setPartyName('');
+      setInvoiceNumber('');
+      setBillDate(todayDateString());
+      setRows([emptyRow()]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to add bill.');
+    }
   };
 
-  const errorMsg = error instanceof Error ? error.message : null;
+  const inputCls = 'w-full border border-navy-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-saffron-400 bg-white text-navy-900';
 
   return (
-    <div className="space-y-6">
-      <Card className="border-border shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-navy">
-            <Receipt className="w-5 h-5 text-saffron" />
-            New Bill Entry
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Party & Invoice */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label htmlFor="partyName" className="text-foreground font-medium">
-                  Party Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="partyName"
-                  value={partyName}
-                  onChange={(e) => setPartyName(e.target.value)}
-                  placeholder="e.g. Sharma Constructions"
-                  required
-                  className="border-border focus-visible:ring-saffron/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="invoiceNumber" className="text-foreground font-medium">
-                  Invoice Number <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="invoiceNumber"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  placeholder="e.g. INV-2024-001"
-                  required
-                  className="border-border focus-visible:ring-saffron/50"
-                />
-              </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Party & Invoice Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-navy-700 mb-1">Party Name *</label>
+          <AutocompleteInput
+            value={partyName}
+            onChange={setPartyName}
+            suggestions={partyNames}
+            placeholder="Enter party name"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-navy-700 mb-1">Invoice Number *</label>
+          <input
+            type="text"
+            value={invoiceNumber}
+            onChange={e => setInvoiceNumber(e.target.value)}
+            placeholder="e.g. INV-001"
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-navy-700 mb-1">Bill Date *</label>
+          <input
+            type="date"
+            value={billDate}
+            onChange={e => setBillDate(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+      </div>
+
+      {/* Line Items Table */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-navy-700">Line Items ({rows.length}/{MAX_ROWS})</h3>
+          <button
+            type="button"
+            onClick={addRow}
+            disabled={rows.length >= MAX_ROWS}
+            className="text-xs bg-saffron-500 hover:bg-saffron-600 text-white px-3 py-1 rounded disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            + Add Row
+          </button>
+        </div>
+        <div className="overflow-x-auto rounded border border-navy-200">
+          <table className="w-full text-xs">
+            <thead className="bg-navy-800 text-white">
+              <tr>
+                <th className="px-2 py-2 text-left w-8">#</th>
+                <th className="px-2 py-2 text-left w-24">HSN Code</th>
+                <th className="px-2 py-2 text-left min-w-[160px]">Product / Service</th>
+                <th className="px-2 py-2 text-left w-20">Qty</th>
+                <th className="px-2 py-2 text-left w-24">Unit</th>
+                <th className="px-2 py-2 text-left w-24">Rate (₹)</th>
+                <th className="px-2 py-2 text-right w-28">Amount (₹)</th>
+                <th className="px-2 py-2 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-navy-50'}>
+                  <td className="px-2 py-1 text-navy-500">{idx + 1}</td>
+                  <td className="px-2 py-1">
+                    <input
+                      type="text"
+                      value={row.hsnCode}
+                      onChange={e => updateRow(idx, 'hsnCode', e.target.value)}
+                      placeholder="HSN"
+                      className={inputCls}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <AutocompleteInput
+                      value={row.productName}
+                      onChange={v => updateRow(idx, 'productName', v)}
+                      suggestions={productNames}
+                      placeholder="Product/Service"
+                      className={inputCls}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      type="number"
+                      value={row.quantity}
+                      onChange={e => updateRow(idx, 'quantity', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className={inputCls}
+                    />
+                  </td>
+                  <td className="px-2 py-1">
+                    <div className="flex gap-1">
+                      <input
+                        type="text"
+                        value={row.unit}
+                        onChange={e => updateRow(idx, 'unit', e.target.value)}
+                        className={`${inputCls} w-16`}
+                      />
+                      <select
+                        value={UNIT_OPTIONS.includes(row.unit) ? row.unit : ''}
+                        onChange={e => { if (e.target.value) updateRow(idx, 'unit', e.target.value); }}
+                        className="border border-navy-200 rounded text-xs bg-white text-navy-700 px-1"
+                      >
+                        <option value="">▾</option>
+                        {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  </td>
+                  <td className="px-2 py-1">
+                    <input
+                      type="number"
+                      value={row.rate}
+                      onChange={e => updateRow(idx, 'rate', e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="any"
+                      className={inputCls}
+                    />
+                  </td>
+                  <td className="px-2 py-1 text-right font-medium text-navy-800">
+                    {formatCurrency(getRowTotal(row))}
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    {rows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(idx)}
+                        className="text-red-400 hover:text-red-600 font-bold text-base leading-none"
+                        title="Remove row"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* GST Summary */}
+      <div className="flex justify-end">
+        <div className="w-full max-w-xs space-y-1 text-sm">
+          <div className="flex justify-between text-navy-700">
+            <span>Base Amount</span>
+            <span className="font-medium">{formatCurrency(baseAmount)}</span>
+          </div>
+          <div className="flex justify-between text-navy-600">
+            <span>CGST (9%)</span>
+            <span>{formatCurrency(cgst)}</span>
+          </div>
+          <div className="flex justify-between text-navy-600">
+            <span>SGST (9%)</span>
+            <span>{formatCurrency(sgst)}</span>
+          </div>
+          {Math.abs(roundOff) > 0.001 && (
+            <div className="flex justify-between text-navy-500 text-xs">
+              <span>Round-off</span>
+              <span>{roundOff > 0 ? '+' : ''}{roundOff.toFixed(2)}</span>
             </div>
-
-            {/* Line Items Table */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-foreground font-semibold text-base">
-                  Items <span className="text-destructive">*</span>
-                  <span className="text-muted-foreground font-normal text-xs ml-2">
-                    ({rows.length}/{MAX_ROWS} rows)
-                  </span>
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addRow}
-                  disabled={rows.length >= MAX_ROWS}
-                  className="border-navy/30 text-navy hover:bg-navy/5 gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Row
-                </Button>
-              </div>
-
-              {/* Table wrapper with horizontal scroll on small screens */}
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm min-w-[640px]">
-                  <thead>
-                    <tr className="bg-navy text-white">
-                      <th className="px-3 py-2.5 text-center font-semibold w-12">Sr.</th>
-                      <th className="px-3 py-2.5 text-left font-semibold w-28">HSN Code</th>
-                      <th className="px-3 py-2.5 text-left font-semibold">Product Name</th>
-                      <th className="px-3 py-2.5 text-right font-semibold w-36">Amount (₹)</th>
-                      <th className="px-3 py-2.5 text-right font-semibold w-32">GST 18% (₹)</th>
-                      <th className="px-3 py-2.5 text-center font-semibold w-12"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, idx) => {
-                      const amt = parseFloat(row.amountStr);
-                      const itemAmt = isNaN(amt) || amt < 0 ? 0 : amt;
-                      const itemGst = computeItemGst(itemAmt);
-                      return (
-                        <tr
-                          key={row.id}
-                          className={idx % 2 === 0 ? 'bg-white' : 'bg-navy/[0.03]'}
-                        >
-                          <td className="px-3 py-2 text-center text-muted-foreground font-medium">
-                            {idx + 1}
-                          </td>
-                          <td className="px-2 py-2">
-                            <Input
-                              value={row.hsnCode}
-                              onChange={(e) => updateRow(row.id, 'hsnCode', e.target.value)}
-                              placeholder="e.g. 9954"
-                              className="h-8 text-xs border-border/60 focus-visible:ring-saffron/40"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <Input
-                              value={row.productName}
-                              onChange={(e) => updateRow(row.id, 'productName', e.target.value)}
-                              placeholder="Product / Service name"
-                              className="h-8 text-xs border-border/60 focus-visible:ring-saffron/40"
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <Input
-                              type="number"
-                              value={row.amountStr}
-                              onChange={(e) => updateRow(row.id, 'amountStr', e.target.value)}
-                              placeholder="0.00"
-                              min="0"
-                              step="0.01"
-                              className="h-8 text-xs text-right border-border/60 focus-visible:ring-saffron/40"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-right text-muted-foreground font-medium text-xs">
-                            {itemAmt > 0 ? formatAmount(itemGst) : '—'}
-                          </td>
-                          <td className="px-2 py-2 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeRow(row.id)}
-                              disabled={rows.length === 1}
-                              className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors p-1 rounded"
-                              title="Remove row"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {/* Totals row */}
-                  <tfoot>
-                    <tr className="bg-navy/5 border-t-2 border-navy/20 font-semibold text-sm">
-                      <td colSpan={3} className="px-3 py-2.5 text-right text-navy">
-                        Total
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-navy">
-                        {formatAmount(baseAmount)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-navy">
-                        {formatAmount(totalGst)}
-                      </td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-
-            {/* Live GST Breakdown */}
-            {hasBreakdown && (
-              <div className="bg-navy/5 border border-navy/10 rounded-xl p-5 space-y-3">
-                <div className="flex items-center gap-2 mb-3">
-                  <Calculator className="w-4 h-4 text-saffron" />
-                  <span className="text-sm font-semibold text-navy">GST Calculation Breakdown</span>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Base Amount</span>
-                    <span className="font-medium">{formatAmount(baseAmount)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">CGST @ 9%</span>
-                    <span className="font-medium text-navy">{formatAmount(cgst)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">SGST @ 9%</span>
-                    <span className="font-medium text-navy">{formatAmount(sgst)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total GST (18%)</span>
-                    <span className="font-medium text-navy">{formatAmount(totalGst)}</span>
-                  </div>
-                  <Separator className="my-1" />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sub Total</span>
-                    <span className="font-medium">{formatAmount(rawTotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Round Off</span>
-                    <span className={`font-medium ${roundOff >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {roundOff >= 0 ? '+' : ''}{formatAmount(roundOff)}
-                    </span>
-                  </div>
-                  <Separator className="my-1" />
-                  <div className="flex justify-between text-base font-bold">
-                    <span className="text-navy">Final Amount</span>
-                    <span className="text-saffron text-lg">{formatAmount(finalAmount)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg px-4 py-3">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {errorMsg.includes('already exists') ? 'Invoice number already exists' : errorMsg}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              disabled={isPending || !partyName.trim() || !invoiceNumber.trim()}
-              className="w-full bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl py-3"
-              size="lg"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving Bill...
-                </>
-              ) : (
-                'Save Bill'
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Success Banner */}
-      {savedBill && (
-        <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
-          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-green-800">Bill saved successfully!</p>
-            <p className="text-sm text-green-700 mt-0.5">
-              Invoice <span className="font-mono font-bold">{savedBill.invoiceNumber}</span> — Final Amount:{' '}
-              <span className="font-bold">{formatAmount(savedBill.finalAmount)}</span>
-            </p>
+          )}
+          <div className="flex justify-between font-bold text-navy-900 border-t border-navy-200 pt-1">
+            <span>Final Amount</span>
+            <span className="text-saffron-600">{formatCurrency(finalAmountRounded)}</span>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+      {success && <p className="text-green-700 text-sm bg-green-50 border border-green-200 rounded px-3 py-2">{success}</p>}
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={addBillMutation.isPending}
+          className="bg-navy-800 hover:bg-navy-900 text-white font-semibold px-8 py-2 rounded transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {addBillMutation.isPending && (
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+          )}
+          {addBillMutation.isPending ? 'Saving...' : 'Save Bill'}
+        </button>
+      </div>
+    </form>
   );
 }

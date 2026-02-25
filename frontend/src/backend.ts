@@ -89,15 +89,26 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface BillOperation {
+    lineItems: Array<LineItem>;
+    billDate: bigint;
+    invoiceNumber: string;
+    partyName: string;
+}
 export interface LineItem {
+    rate: number;
     srNo: bigint;
+    unit: string;
     hsnCode: string;
     productName: string;
-    amount: number;
-    itemGst: number;
+    totalAmount: number;
+    quantity: number;
 }
-export interface UserProfile {
-    name: string;
+export interface ProfitLossSummary {
+    totalReceived: number;
+    totalOutstanding: number;
+    profitLossIndicator: boolean;
+    totalBilled: number;
 }
 export interface Bill {
     lineItems: Array<LineItem>;
@@ -105,10 +116,30 @@ export interface Bill {
     cgst: number;
     sgst: number;
     totalGst: number;
+    amountPaid: number;
+    billDate: bigint;
     invoiceNumber: string;
     baseAmount: number;
     partyName: string;
+    pendingAmount: number;
     roundOff: number;
+}
+export interface CompanyReport {
+    totalReceived: number;
+    totalServiceAmount: number;
+    bills: Array<Bill>;
+    totalPending: number;
+}
+export interface PartySummary {
+    gstNumber: string;
+    totalPaid: number;
+    totalBilled: number;
+    partyName: string;
+    billCount: bigint;
+    totalPending: number;
+}
+export interface UserProfile {
+    name: string;
 }
 export enum UserRole {
     admin = "admin",
@@ -117,8 +148,11 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    addBill(partyName: string, invoiceNumber: string, lineItems: Array<LineItem>): Promise<Bill>;
+    addBill(billOp: BillOperation): Promise<Bill>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    billExists(invoiceNumber: string): Promise<boolean>;
+    deleteBill(invoiceNumber: string): Promise<Bill>;
+    editBill(invoiceNumber: string, updatedBillOp: BillOperation): Promise<Bill>;
     getAggregate(): Promise<{
         totalGst: number;
         totalAmount: number;
@@ -128,9 +162,17 @@ export interface backendInterface {
     getBillsByParty(partyName: string): Promise<Array<Bill>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getCompanyReport(partyName: string, from: bigint, to: bigint): Promise<CompanyReport>;
+    getPartyGstNumber(partyName: string): Promise<string>;
+    getPartyNames(): Promise<Array<string>>;
+    getPartySummary(): Promise<Array<PartySummary>>;
+    getPartySummaryByDateRange(from: bigint, to: bigint): Promise<Array<PartySummary>>;
+    getProductNames(): Promise<Array<string>>;
+    getProfitLossSummary(from: bigint, to: bigint): Promise<ProfitLossSummary>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    savePartyGstNumber(partyName: string, gstNumber: string): Promise<void>;
 }
 import type { UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -149,17 +191,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addBill(arg0: string, arg1: string, arg2: Array<LineItem>): Promise<Bill> {
+    async addBill(arg0: BillOperation): Promise<Bill> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBill(arg0, arg1, arg2);
+                const result = await this.actor.addBill(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBill(arg0, arg1, arg2);
+            const result = await this.actor.addBill(arg0);
             return result;
         }
     }
@@ -174,6 +216,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async billExists(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.billExists(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.billExists(arg0);
+            return result;
+        }
+    }
+    async deleteBill(arg0: string): Promise<Bill> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteBill(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteBill(arg0);
+            return result;
+        }
+    }
+    async editBill(arg0: string, arg1: BillOperation): Promise<Bill> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editBill(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editBill(arg0, arg1);
             return result;
         }
     }
@@ -264,6 +348,104 @@ export class Backend implements backendInterface {
             return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getCompanyReport(arg0: string, arg1: bigint, arg2: bigint): Promise<CompanyReport> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCompanyReport(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCompanyReport(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async getPartyGstNumber(arg0: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPartyGstNumber(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPartyGstNumber(arg0);
+            return result;
+        }
+    }
+    async getPartyNames(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPartyNames();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPartyNames();
+            return result;
+        }
+    }
+    async getPartySummary(): Promise<Array<PartySummary>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPartySummary();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPartySummary();
+            return result;
+        }
+    }
+    async getPartySummaryByDateRange(arg0: bigint, arg1: bigint): Promise<Array<PartySummary>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPartySummaryByDateRange(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPartySummaryByDateRange(arg0, arg1);
+            return result;
+        }
+    }
+    async getProductNames(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getProductNames();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getProductNames();
+            return result;
+        }
+    }
+    async getProfitLossSummary(arg0: bigint, arg1: bigint): Promise<ProfitLossSummary> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getProfitLossSummary(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getProfitLossSummary(arg0, arg1);
+            return result;
+        }
+    }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -303,6 +485,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveCallerUserProfile(arg0);
+            return result;
+        }
+    }
+    async savePartyGstNumber(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.savePartyGstNumber(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.savePartyGstNumber(arg0, arg1);
             return result;
         }
     }

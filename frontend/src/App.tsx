@@ -6,6 +6,8 @@ import AddBillPage from './pages/AddBillPage';
 import SearchBillsPage from './pages/SearchBillsPage';
 import SummaryPage from './pages/SummaryPage';
 import InvoicePrintPage from './pages/InvoicePrintPage';
+import PartySummaryPage from './pages/PartySummaryPage';
+import CompanyReportPage from './pages/CompanyReportPage';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -47,12 +49,26 @@ const invoicePrintRoute = createRoute({
   component: InvoicePrintPage,
 });
 
+const partySummaryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/party-summary',
+  component: PartySummaryPage,
+});
+
+const companyReportRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/company-report',
+  component: CompanyReportPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   addBillRoute,
   searchRoute,
   summaryRoute,
   invoicePrintRoute,
+  partySummaryRoute,
+  companyReportRoute,
 ]);
 
 const router = createRouter({ routeTree });

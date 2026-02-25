@@ -1,13 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Add a multi-line item table (up to 10 rows) to the bill creation form, backend data model, and invoice print view, replacing the single base amount field with aggregated line item totals.
+**Goal:** Enhance the Manish Infratech billing app with GST display on invoices, editable bill dates, 30 line items per bill, CSV report downloads, and autocomplete suggestions for party and product names.
 
 **Planned changes:**
-- Extend the backend bill data model to store an array of line items (Sr. No., HSN Code, Product Name, item amount, item GST at 18%), with aggregated totals feeding into CGST (9%), SGST (9%), round-off, and final amount calculations.
-- Update the bill creation API to accept and persist the line items array.
-- Replace the single "Base Amount" field in the Add Bill form with an editable line item table (columns: Sr. No., HSN Code, Product Name, Amount ₹, GST ₹), supporting add/remove rows up to 10, auto-incremented Sr. No., and auto-computed GST per row.
-- Show a live GST breakdown summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) below the table that updates in real time.
-- Update the invoice print view to display the line item table above the existing GST summary section.
+- Display the party's GST number in the invoice header (InvoicePrintView) beneath the party name as "GST No: <value>"; omit if not stored
+- Add a Bill Date field to AddBillForm and EditBillModal, defaulting to today's date, editable, stored as Unix timestamp in nanoseconds; show bill date in BillResultsTable, CompanyReportPage, and InvoicePrintView
+- Increase the maximum line item rows per bill from 10 to 30 in AddBillForm, EditBillModal, and backend; disable "Add Row" button at 30 rows
+- Add a "Download Report" button on SummaryPage that exports all bills (filtered by active date range) as a CSV with columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount
+- Add a "Download Report" button on CompanyReportPage that exports the current party's bills (filtered by active date range) as a CSV with party name and GST number as a header block
+- Implement autocomplete dropdown for the Party Name field in AddBillForm and EditBillModal, sourced from unique party names stored in the backend
+- Implement autocomplete dropdown for Product Name cells in line item rows in AddBillForm and EditBillModal, sourced from unique product names across all existing bill line items
 
-**User-visible outcome:** Users can enter up to 10 product line items per bill with HSN codes and individual amounts, see per-item GST calculated automatically, and have the full breakdown reflected in both the bill form and the printed invoice.
+**User-visible outcome:** Users can see party GST numbers on printed invoices, pick or edit bill dates, add up to 30 line items per bill, download CSV reports from both the summary and company report pages, and get autocomplete suggestions when typing party or product names.

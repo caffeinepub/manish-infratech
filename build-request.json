@@ -1,84 +1,156 @@
 {
   "kind": "build_request",
-  "title": "Add multi-line item table (up to 10 rows) to bills with Sr. No., HSN Code, Product Name, Amount, and GST per item",
+  "title": "GST on invoice, editable bill date, 30 line items, report downloads, and autocomplete suggestions",
   "projectName": "Manish Infratech",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-10",
-      "text": "Extend the bill data model in the backend to include a list of line items (up to 10 rows). Each line item must store: Sr. No. (Nat), HSN Code (Text), Product Name (Text), individual item amount (Float), and GST on that item (Float, computed as 18% of item amount). Update the bill creation API to accept these line items and persist them alongside the existing bill fields. Aggregate the sum of all item amounts as the base amount and sum of all item GST values as the total GST, feeding into CGST (9%), SGST (9%), round-off, and final amount calculations.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Bill record includes an array of line items, each containing Sr. No., HSN Code, Product Name, item amount, and GST on that item.",
-        "A bill can store between 1 and 10 line items.",
-        "The sum of all line item amounts equals the bill's base amount.",
-        "The sum of all line item GST values equals the bill's total GST (CGST + SGST).",
-        "Existing bill fields (party name, invoice number, CGST, SGST, round-off, final amount) remain intact and are correctly derived from the aggregated item totals.",
-        "Bill creation API accepts and persists the line items array."
-      ]
-    },
-    {
-      "id": "REQ-11",
-      "text": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows. Each row must have fields for Sr. No. (auto-incremented), HSN Code (text input), Product Name (text input), and Item Amount (numeric input). GST per item (18% of item amount) must be computed and displayed automatically per row. The form must allow adding rows (up to 10) and removing rows. The overall bill GST breakdown (CGST 9%, SGST 9%, round-off, final amount) must be derived from the aggregated item totals and displayed in a live summary below the table before saving. Remove the single 'Base Amount' field and replace it with the aggregated total from the line items.",
+      "id": "REQ-31",
+      "text": "Display the party's GST number on the printed invoice (InvoicePrintView). Fetch the GST number from the party profile (already stored via savePartyGstNumber) and render it in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4"
         ],
         "quotes": [
-          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
+          "Their gst number should be written in bill"
         ]
       },
       "acceptanceCriteria": [
-        "The Add Bill form contains a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹).",
-        "Sr. No. is auto-incremented starting from 1 for each row.",
-        "GST per row is automatically computed as 18% of the item amount and displayed (read-only).",
-        "Users can add rows up to a maximum of 10.",
-        "Users can remove any row; Sr. No. values re-sequence automatically.",
-        "At least one item row is required before submitting.",
-        "The live GST breakdown summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) is updated in real time as item amounts change.",
-        "The form submits all line items along with party name and invoice number to the backend."
+        "When printing/viewing an invoice for a party that has a stored GST number, the GST number appears in the invoice header beneath the party name.",
+        "The label reads 'GST No:' followed by the GST number value.",
+        "When no GST number is stored for the party, the GST No line is not rendered in the print view."
       ]
     },
     {
-      "id": "REQ-12",
-      "text": "Update the invoice print view (InvoicePrintView) to include the line item table. The printed invoice must display a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹) for all items on the bill. Below the item table, continue to show the existing GST summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount).",
-      "target": "frontend",
+      "id": "REQ-32",
+      "text": "Add a Bill Date field to the AddBillForm and EditBillModal. The field must default to today's date (auto-populated on form open). The owner must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4"
         ],
         "quotes": [
-          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
+          "the date is automatically selection and i can alter it"
         ]
       },
       "acceptanceCriteria": [
-        "The printed invoice includes a line item table with Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹) columns.",
-        "All line items saved on the bill are displayed in the table.",
-        "The GST summary section (CGST, SGST, round-off, final amount) still appears below the item table.",
-        "The print layout remains clean and professional, consistent with the existing navy and saffron theme."
+        "The Add Bill form shows a date input defaulting to today's date when opened.",
+        "The user can change the date to any value before saving.",
+        "The Edit Bill modal shows the existing bill date pre-filled in the date input.",
+        "The submitted bill date is correctly stored in the backend as a Unix timestamp in nanoseconds.",
+        "The bill date is visible in BillResultsTable, CompanyReportPage, and InvoicePrintView."
+      ]
+    },
+    {
+      "id": "REQ-33",
+      "text": "Increase the maximum number of line item rows per bill from 10 to 30 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 30 rows are present. The backend must accept up to 30 line items per bill.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "the number of rows made them 30"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Add Bill form allows adding up to 30 line item rows.",
+        "The Edit Bill modal allows up to 30 line item rows.",
+        "The 'Add Row' button is disabled or hidden once 30 rows exist.",
+        "The backend accepts and persists bills with up to 30 line items without error."
+      ]
+    },
+    {
+      "id": "REQ-34",
+      "text": "Add a 'Download Report' button on the SummaryPage that exports the overall financial summary (all parties, all bills) as a downloadable CSV file. The CSV must include columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. Apply any active date-range filter when generating the export.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "can download report make it like that the option to download report of total"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A 'Download Report' button is visible on the SummaryPage.",
+        "Clicking it triggers a browser download of a CSV file.",
+        "The CSV contains the specified columns for all bills (filtered by active date range if set).",
+        "The filename is descriptive, e.g. 'manish-infratech-total-report.csv'."
+      ]
+    },
+    {
+      "id": "REQ-35",
+      "text": "Add a 'Download Report' button on the CompanyReportPage that exports the current party's report as a downloadable CSV file. The CSV must include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Apply any active date-range filter when generating the export.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "company-wide also"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A 'Download Report' button is visible on the CompanyReportPage.",
+        "Clicking it triggers a browser download of a CSV file named after the party (e.g. 'party-name-report.csv').",
+        "The CSV contains the specified columns for all bills shown (filtered by active date range if set).",
+        "The party name and GST number appear in the first two rows of the CSV as a header block."
+      ]
+    },
+    {
+      "id": "REQ-36",
+      "text": "Implement autocomplete suggestions for the Party Name input in AddBillForm and EditBillModal. As the user types, show a dropdown of previously used party names (fetched from existing bills) that match the typed prefix. Selecting a suggestion fills in the party name field. The suggestion list must be sourced from all unique party names already stored in the backend.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "once company name used it should be in suggestions"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Typing in the Party Name field shows a filtered dropdown of previously used party names.",
+        "The suggestions are fetched from the backend (unique party names from existing bills or party profiles).",
+        "Selecting a suggestion from the dropdown populates the Party Name field.",
+        "The dropdown closes when a selection is made or the user clicks away.",
+        "If no suggestions match the current input, the dropdown is hidden."
+      ]
+    },
+    {
+      "id": "REQ-37",
+      "text": "Implement autocomplete suggestions for the Product Name input within line item rows in AddBillForm and EditBillModal. As the user types in a Product Name cell, show a dropdown of previously used product names (from all existing line items across bills) that match the typed prefix. Selecting a suggestion fills in that product name cell.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "product also in suggestions"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Typing in any Product Name cell within the line items table shows a filtered dropdown of previously used product names.",
+        "The suggestions are sourced from all unique product names stored across existing bill line items.",
+        "Selecting a suggestion fills in the Product Name field for that row.",
+        "The dropdown closes when a selection is made or focus leaves the field.",
+        "The backend exposes a query to return all unique product names for the owner, or the frontend derives them from fetched bill data."
       ]
     }
   ],
   "constraints": [
-    "Existing bill fields (party name, invoice number, CGST, SGST, round-off, final amount) must be preserved and remain backward-compatible.",
-    "Maximum of 10 line items per bill.",
-    "Do not edit files under frontend/src/hooks/ or frontend/src/components/ui/.",
-    "Single-actor Motoko backend architecture must be maintained."
+    "Do not change the navy/saffron visual theme.",
+    "Report downloads must use browser-native CSV generation (no external libraries required); do not use server-side PDF generation.",
+    "Autocomplete dropdowns must not block or overlap form submit buttons.",
+    "All backend changes must remain within the single main actor in backend/main.mo."
   ],
   "nonGoals": [
-    "Changing the authentication or authorization logic.",
-    "Adding new bill search or summary features.",
-    "Supporting more than 10 line items per bill.",
-    "Adding line-item-level editing after a bill has been saved."
+    "Sending reports via email or any third-party service.",
+    "Generating PDF exports (CSV only for report downloads).",
+    "Adding new user roles or multi-user access.",
+    "Changing the existing GST calculation logic (CGST 9% + SGST 9%)."
   ],
   "imageRequirements": {
     "required": [],

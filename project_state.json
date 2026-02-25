@@ -1,11 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 7,
-  "summary": "Manish Infratech billing/invoice management web app with authentication (single user access). Features: add bills with party name, invoice number, amount; auto-calculate CGST (9%) + SGST (9%) + round-off; save bills to database; search bills by party/invoice; view revenue and GST summary; download/print invoices as PDF. Bills now support multi-line items (up to 10 rows) with Sr. No., HSN Code, Product Name, individual amount, and GST per item.",
+  "projectStateVersion": 15,
+  "summary": "Manish Infratech billing/invoice management web app with authentication (single user access). Features: add bills with party name, invoice number, amount; auto-calculate CGST (9%) + SGST (9%) + round-off; save bills to database; search bills by party/invoice; view revenue and GST summary; download/print invoices as PDF. Bills support multi-line items (up to 10 rows) with Sr. No., HSN Code, Product Name, Quantity, Unit (e.g. SQM/RMT/PCS), Rate per unit, and computed item total amount. New features: party-wise individual summary, payment tracking, GST number per company, party-wise detailed report, date filtering, and Profit & Loss section.",
   "architectural_notes": [
     "Single-user access control: protect all routes behind authentication",
     "Bills stored with fields: party, invoice, amount, cgst, sgst, gst, roundoff, final",
-    "Bill line items stored with fields: srNo, hsnCode, productName, amount, gst (up to 10 rows per bill)"
+    "Invoice numbers must be unique across all bills; enforce uniqueness check on bill creation and edit",
+    "Bills must store a date field (bill/invoice date) to support date-range filtering in reports",
+    "Party GST numbers stored in a separate party/company profile or alongside the bill; must appear in invoice print and party summary",
+    "Bill line items must store: srNo, hsnCode, productName, quantity (Float), unit (Text, e.g. SQM/RMT/PCS), rate (Float), amount (computed as quantity × rate), gst (18% of amount)",
+    "Line items support up to 30 rows per bill (increased from 10)",
+    "Party name and product name inputs must support autocomplete suggestions based on previously used values"
   ],
   "known_issues": [
     "Authentication bug: app shows 'Access Denied' message but still grants access instead of blocking unauthorized users"
@@ -83,6 +88,150 @@
         "REQ-12"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-generate-a-small-square-logo-image-with-a-red-and-white-theme-displaying-the-initials-mi-in-bold-typography-suitable-for-use-as-a-company-logo-in-the-top-left-corner-of-the-invoice-print-view",
+      "title": "Generate a small square logo image with a red and white theme displaying the initials 'MI' in bold typography, suitable for use as a company logo in the top-left corner of the invoice print view.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-invoiceprintview-to-display-the-company-name-manish-infratech-prominently-in-the-invoice-header-and-render-the-generated-mi-logo-image-in-the-top-left-corner-of-the-printed-invoice",
+      "title": "Update InvoicePrintView to display the company name 'MANISH INFRATECH' prominently in the invoice header and render the generated MI logo image in the top-left corner of the printed invoice.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-enforce-unique-invoice-numbers-on-the-backend-before-saving-a-new-bill-check-whether-a-bill-with-the-same-invoice-number-already-exists-for-the-owner-if-a-duplicate-is-found-return-an-error-result-update-the-frontend-addbillform-to-display-a-clear-inline-error-message-when-the-backend-returns-a-duplicate-invoice-number-error",
+      "title": "Enforce unique invoice numbers on the backend: before saving a new bill, check whether a bill with the same invoice number already exists for the owner. If a duplicate is found, return an error result. Update the frontend AddBillForm to display a clear inline error message when the backend returns a duplicate invoice number error.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-edit-and-delete-action-buttons-to-each-bill-row-in-the-billresultstable-used-on-the-search-bills-listing-page-and-on-the-summarypage-bill-list-clicking-edit-opens-a-pre-filled-form-reusing-addbillform-logic-allowing-the-owner-to-modify-the-bill-and-save-changes-clicking-delete-prompts-a-confirmation-dialog-and-then-removes-the-bill",
+      "title": "Add Edit and Delete action buttons to each bill row in the BillResultsTable (used on the Search/Bills listing page) and on the SummaryPage bill list. Clicking Edit opens a pre-filled form (reusing AddBillForm logic) allowing the owner to modify the bill and save changes. Clicking Delete prompts a confirmation dialog and then removes the bill.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-editbillmodal-and-addbillform-on-the-frontend-to-include-an-amount-paid-numeric-input-field-this-field-should-default-to-0-on-new-bills-and-be-pre-filled-with-the-existing-amountpaid-on-edit-the-pending-amount-finalamount-minus-amountpaid-must-be-computed-and-displayed-live-next-to-the-field-the-amountpaid-value-must-be-submitted-to-the-backend-on-save-edit",
+      "title": "Update the EditBillModal and AddBillForm on the frontend to include an 'Amount Paid (₹)' numeric input field. This field should default to 0 on new bills and be pre-filled with the existing amountPaid on edit. The pending amount (finalAmount minus amountPaid) must be computed and displayed live next to the field. The amountPaid value must be submitted to the backend on save/edit.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-party-summary-page-route-party-summary-accessible-from-the-main-navigation-the-page-must-display-a-table-of-all-parties-with-columns-party-name-gst-number-total-billed-total-paid-total-pending-bill-count-each-party-row-must-have-a-view-report-button-that-navigates-to-the-individual-company-report-the-page-must-include-a-date-range-filter-from-date-to-date-inputs-that-re-fetches-data-via-getpartysummarybydaterange-when-applied-include-an-inline-form-per-party-row-or-a-small-modal-to-add-edit-the-party-s-gst-number-which-calls-savepartygstnumber-apply-the-existing-navy-saffron-theme-consistently",
+      "title": "Create a new 'Party Summary' page (route: /party-summary) accessible from the main navigation. The page must display a table of all parties with columns: Party Name, GST Number, Total Billed (₹), Total Paid (₹), Total Pending (₹), Bill Count. Each party row must have a 'View Report' button that navigates to the individual company report. The page must include a date range filter (From date / To date inputs) that re-fetches data via getPartySummaryByDateRange when applied. Include an inline form per party row (or a small modal) to add/edit the party's GST number, which calls savePartyGstNumber. Apply the existing navy/saffron theme consistently.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-company-report-page-route-company-report-that-accepts-a-party-name-as-a-url-query-parameter-the-page-must-display-the-party-name-and-gst-number-at-the-top-summary-cards-for-total-service-amount-total-payment-received-and-total-pending-a-date-range-filter-from-to-that-re-fetches-via-getcompanyreport-and-a-table-listing-all-bills-for-that-party-in-the-selected-range-with-columns-invoice-no-date-base-amount-final-amount-amount-paid-pending-and-a-print-button-per-row-apply-the-existing-navy-saffron-theme",
+      "title": "Create a new 'Company Report' page (route: /company-report) that accepts a party name as a URL/query parameter. The page must display: the party name and GST number at the top; summary cards for Total Service Amount, Total Payment Received, and Total Pending; a date range filter (From / To) that re-fetches via getCompanyReport; and a table listing all bills for that party in the selected range with columns: Invoice No., Date, Base Amount (₹), Final Amount (₹), Amount Paid (₹), Pending (₹), and a Print button per row. Apply the existing navy/saffron theme.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-profit-loss-section-to-the-existing-summarypage-or-as-a-distinct-collapsible-card-at-the-bottom-of-the-page-it-must-display-total-billed-total-received-total-outstanding-and-a-visual-indicator-green-if-outstanding-is-zero-or-negative-amber-if-outstanding-is-positive-include-a-date-range-filter-from-to-that-re-fetches-the-p-l-data-via-getprofitlosssummary-all-values-must-use-formatting",
+      "title": "Add a 'Profit & Loss' section to the existing SummaryPage (or as a distinct collapsible card at the bottom of the page). It must display: Total Billed, Total Received, Total Outstanding, and a visual indicator (green if outstanding is zero or negative, amber if outstanding is positive). Include a date range filter (From / To) that re-fetches the P&L data via getProfitLossSummary. All values must use ₹ formatting.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-billresultstable-to-add-an-amount-paid-and-pending-column-to-each-bill-row-showing-the-respective-values-with-formatting-these-columns-should-be-visible-on-the-search-bills-listing-page-the-summarypage-bill-list-and-the-company-report-page-bill-table",
+      "title": "Update the BillResultsTable to add an 'Amount Paid' and 'Pending' column to each bill row, showing the respective values with ₹ formatting. These columns should be visible on the Search/Bills listing page, the SummaryPage bill list, and the Company Report page bill table.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-addbillform-and-editbillmodal-on-the-frontend-so-that-each-line-item-row-contains-sr-no-auto-incremented-read-only-hsn-code-text-input-product-name-text-input-quantity-numeric-input-unit-dropdown-or-text-input-supporting-values-like-sqm-rmt-pcs-and-free-text-entry-rate-numeric-input-price-per-unit-and-a-computed-total-amount-quantity-rate-displayed-read-only-remove-any-standalone-item-amount-input-that-previously-appeared-in-its-place-the-live-gst-summary-below-the-table-cgst-9-sgst-9-round-off-finalamount-pending-amount-must-continue-to-update-in-real-time-based-on-the-aggregated-totals-from-the-new-per-row-computation",
+      "title": "Update AddBillForm and EditBillModal on the frontend so that each line item row contains: Sr. No. (auto-incremented, read-only), HSN Code (text input), Product Name (text input), Quantity (numeric input), Unit (dropdown or text input supporting values like SQM, RMT, PCS and free-text entry), Rate (numeric input — price per unit), and a computed Total Amount (Quantity × Rate, displayed read-only). Remove any standalone 'Item Amount' input that previously appeared in its place. The live GST summary below the table (CGST 9%, SGST 9%, round-off, finalAmount, pending amount) must continue to update in real time based on the aggregated totals from the new per-row computation.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-invoiceprintview-to-display-the-updated-line-item-columns-in-the-invoice-table-the-printed-table-must-have-columns-sr-no-hsn-code-product-name-qty-unit-rate-amount-replace-any-previous-column-layout-that-did-not-include-qty-unit-and-rate-the-gst-summary-section-below-the-table-base-amount-cgst-9-sgst-9-round-off-final-amount-must-remain-unchanged",
+      "title": "Update InvoicePrintView to display the updated line item columns in the invoice table. The printed table must have columns: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹). Replace any previous column layout that did not include Qty, Unit, and Rate. The GST summary section below the table (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) must remain unchanged.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-display-the-party-s-gst-number-on-the-printed-invoice-invoiceprintview-fetch-the-gst-number-from-the-party-profile-already-stored-via-savepartygstnumber-and-render-it-in-the-invoice-header-section-beneath-the-party-name-formatted-as-gst-no-value-if-no-gst-number-is-stored-for-the-party-omit-the-line",
+      "title": "Display the party's GST number on the printed invoice (InvoicePrintView). Fetch the GST number from the party profile (already stored via savePartyGstNumber) and render it in the invoice header section beneath the party name, formatted as 'GST No: <value>'. If no GST number is stored for the party, omit the line.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-bill-date-field-to-the-addbillform-and-editbillmodal-the-field-must-default-to-today-s-date-auto-populated-on-form-open-the-owner-must-be-able-to-manually-change-the-date-before-submitting-the-selected-date-must-be-submitted-to-the-backend-as-the-bill-s-billdate-unix-timestamp-in-nanoseconds-on-edit-the-field-must-be-pre-filled-with-the-existing-bill-s-billdate",
+      "title": "Add a Bill Date field to the AddBillForm and EditBillModal. The field must default to today's date (auto-populated on form open). The owner must be able to manually change the date before submitting. The selected date must be submitted to the backend as the bill's billDate (Unix timestamp in nanoseconds). On edit, the field must be pre-filled with the existing bill's billDate.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-increase-the-maximum-number-of-line-item-rows-per-bill-from-10-to-30-in-both-addbillform-and-editbillmodal-the-add-row-button-must-be-disabled-once-30-rows-are-present-the-backend-must-accept-up-to-30-line-items-per-bill",
+      "title": "Increase the maximum number of line item rows per bill from 10 to 30 in both AddBillForm and EditBillModal. The 'Add Row' button must be disabled once 30 rows are present. The backend must accept up to 30 line items per bill.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-download-report-button-on-the-summarypage-that-exports-the-overall-financial-summary-all-parties-all-bills-as-a-downloadable-csv-file-the-csv-must-include-columns-invoice-no-party-name-gst-no-bill-date-base-amount-cgst-sgst-round-off-final-amount-amount-paid-pending-amount-apply-any-active-date-range-filter-when-generating-the-export",
+      "title": "Add a 'Download Report' button on the SummaryPage that exports the overall financial summary (all parties, all bills) as a downloadable CSV file. The CSV must include columns: Invoice No., Party Name, GST No., Bill Date, Base Amount, CGST, SGST, Round-off, Final Amount, Amount Paid, Pending Amount. Apply any active date-range filter when generating the export.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-download-report-button-on-the-companyreportpage-that-exports-the-current-party-s-report-as-a-downloadable-csv-file-the-csv-must-include-columns-invoice-no-bill-date-base-amount-final-amount-amount-paid-pending-apply-any-active-date-range-filter-when-generating-the-export",
+      "title": "Add a 'Download Report' button on the CompanyReportPage that exports the current party's report as a downloadable CSV file. The CSV must include columns: Invoice No., Bill Date, Base Amount, Final Amount, Amount Paid, Pending. Apply any active date-range filter when generating the export.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-autocomplete-suggestions-for-the-party-name-input-in-addbillform-and-editbillmodal-as-the-user-types-show-a-dropdown-of-previously-used-party-names-fetched-from-existing-bills-that-match-the-typed-prefix-selecting-a-suggestion-fills-in-the-party-name-field-the-suggestion-list-must-be-sourced-from-all-unique-party-names-already-stored-in-the-backend",
+      "title": "Implement autocomplete suggestions for the Party Name input in AddBillForm and EditBillModal. As the user types, show a dropdown of previously used party names (fetched from existing bills) that match the typed prefix. Selecting a suggestion fills in the party name field. The suggestion list must be sourced from all unique party names already stored in the backend.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-autocomplete-suggestions-for-the-product-name-input-within-line-item-rows-in-addbillform-and-editbillmodal-as-the-user-types-in-a-product-name-cell-show-a-dropdown-of-previously-used-product-names-from-all-existing-line-items-across-bills-that-match-the-typed-prefix-selecting-a-suggestion-fills-in-that-product-name-cell",
+      "title": "Implement autocomplete suggestions for the Product Name input within line item rows in AddBillForm and EditBillModal. As the user types in a Product Name cell, show a dropdown of previously used product names (from all existing line items across bills) that match the typed prefix. Selecting a suggestion fills in that product name cell.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -144,6 +293,164 @@
       "reqIds": [
         "REQ-10"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Show 'Manish Infratech' company name prominently on the printed invoice, and add a small logo in the top-left corner with a red and white theme displaying 'MI' initials.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Prevent duplicate invoice numbers: validate that each new bill's invoice number is unique before saving; show an error if a duplicate is detected.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Add edit and delete options for bills — accessible from both the summary/revenue view and the bill listing/search results.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "Add backend API methods to update (edit) and delete a bill by invoice number, accessible only by the authenticated owner.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Add party-wise individual summary page: group all bills by company/party name, show each company's total billed amount, total paid, and total pending.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Add payment tracking: each bill should have an 'amount paid' field and auto-calculate pending amount (final amount minus paid). Show paid/pending at both individual bill level and aggregated per company.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Add GST number field per company/party: allow storing a party's GST number, display it in the individual company summary and on printed invoices.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Add individual company report: for a selected party, show total service amount billed, total payment received, total pending, and a list of all related bills with dates.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "Add date filtering (alterable date range) to summaries and reports so the owner can filter by custom date ranges.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Add a Profit & Loss section showing income (total billed/received) vs expenses or outstanding, summarizing overall financial health.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Extend the bill data model in the backend to add the following fields: (1) amountPaid (Float, default 0.0) — the payment received against a bill; (2) pendingAmount (Float, computed as finalAmount minus amountPaid); (3) billDate (Int, Unix timestamp in nanoseconds, recorded at creation time). Expose these fields in all bill read/search/aggregate API responses.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Extend the backend to store a per-party GST number. Add a PartyProfile data structure keyed by party name (Text) containing gstNumber (Text). Expose APIs: (1) savePartyGstNumber(partyName: Text, gstNumber: Text) — owner only, upserts the GST number for that party; (2) getPartyGstNumber(partyName: Text) — returns the stored GST number or empty string. The GST number must be included in any party-wise summary responses.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Add a backend API getPartySummary() that groups all owner bills by party name and returns an array of party summary records. Each record must include: partyName (Text), gstNumber (Text), totalBilled (Float — sum of finalAmounts), totalPaid (Float — sum of amountPaid), totalPending (Float — totalBilled minus totalPaid), and billCount (Nat). Also add getPartySummaryByDateRange(from: Int, to: Int) that applies the same grouping but only over bills whose billDate falls within the given Unix timestamp range.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Add a backend API getCompanyReport(partyName: Text, from: Int, to: Int) that returns a detailed report for a single party: totalServiceAmount (sum of all finalAmounts for that party in the date range), totalReceived (sum of amountPaid), totalPending (totalServiceAmount minus totalReceived), and bills (array of all bill records for that party within the date range, sorted by billDate descending).",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Add a backend API getProfitLossSummary(from: Int, to: Int) that returns: totalBilled (sum of all finalAmounts in range), totalReceived (sum of all amountPaid in range), totalOutstanding (totalBilled minus totalReceived), and a profitLossIndicator flag (positive if totalReceived > 0). This represents the overall financial health for the owner.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Replace single 'amount' field in line items with a unitary system: each line item must have HSN Code, Product Name, Quantity (numeric), Unit (dropdown/text: SQM/RMT/PCS/etc.), Rate per unit (numeric), and auto-computed Total Amount (Quantity × Rate). Update both the bill form UI and the backend data model to store these fields. Invoice print view must display all columns including Qty, Unit, and Rate.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Update the backend LineItem data type to replace the existing single item-amount field with a unitary system. Each line item must store: srNo (Nat), hsnCode (Text), productName (Text), quantity (Float), unit (Text — e.g. SQM, RMT, PCS), rate (Float — price per unit), and totalAmount (Float — computed as quantity × rate). Update the bill creation and edit APIs (addBill, editBill) to accept line items with these new fields. Re-derive baseAmount as the sum of all line item totalAmounts. GST calculations (CGST 9%, SGST 9%, round-off, finalAmount) must continue to be computed from this aggregated baseAmount.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Display party GST number on printed invoice/bill view",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Auto-populate today's date as the bill date on the Add Bill form, but allow the user to manually alter it before saving",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Increase maximum line item rows per bill from 10 to 30",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Add downloadable report for overall/total summary (all parties, all bills) as a downloadable file (PDF or CSV)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-36",
+      "summary": "Add downloadable company-wide report per party (company report downloadable as PDF or CSV)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-37",
+      "summary": "Auto-suggest previously used party/company names in the party name input field when adding/editing a bill",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-38",
+      "summary": "Auto-suggest previously used product names in the product name input field within line items when adding/editing a bill",
+      "reqIds": [],
       "status": "pending"
     }
   ],

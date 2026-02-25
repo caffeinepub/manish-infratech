@@ -16,17 +16,48 @@ export interface Bill {
   'cgst' : number,
   'sgst' : number,
   'totalGst' : number,
+  'amountPaid' : number,
+  'billDate' : bigint,
   'invoiceNumber' : string,
   'baseAmount' : number,
   'partyName' : string,
+  'pendingAmount' : number,
   'roundOff' : number,
 }
+export interface BillOperation {
+  'lineItems' : Array<LineItem>,
+  'billDate' : bigint,
+  'invoiceNumber' : string,
+  'partyName' : string,
+}
+export interface CompanyReport {
+  'totalReceived' : number,
+  'totalServiceAmount' : number,
+  'bills' : Array<Bill>,
+  'totalPending' : number,
+}
 export interface LineItem {
+  'rate' : number,
   'srNo' : bigint,
+  'unit' : string,
   'hsnCode' : string,
   'productName' : string,
-  'amount' : number,
-  'itemGst' : number,
+  'totalAmount' : number,
+  'quantity' : number,
+}
+export interface PartySummary {
+  'gstNumber' : string,
+  'totalPaid' : number,
+  'totalBilled' : number,
+  'partyName' : string,
+  'billCount' : bigint,
+  'totalPending' : number,
+}
+export interface ProfitLossSummary {
+  'totalReceived' : number,
+  'totalOutstanding' : number,
+  'profitLossIndicator' : boolean,
+  'totalBilled' : number,
 }
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
@@ -34,8 +65,11 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addBill' : ActorMethod<[string, string, Array<LineItem>], Bill>,
+  'addBill' : ActorMethod<[BillOperation], Bill>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'billExists' : ActorMethod<[string], boolean>,
+  'deleteBill' : ActorMethod<[string], Bill>,
+  'editBill' : ActorMethod<[string, BillOperation], Bill>,
   'getAggregate' : ActorMethod<
     [],
     { 'totalGst' : number, 'totalAmount' : number }
@@ -45,9 +79,20 @@ export interface _SERVICE {
   'getBillsByParty' : ActorMethod<[string], Array<Bill>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCompanyReport' : ActorMethod<[string, bigint, bigint], CompanyReport>,
+  'getPartyGstNumber' : ActorMethod<[string], string>,
+  'getPartyNames' : ActorMethod<[], Array<string>>,
+  'getPartySummary' : ActorMethod<[], Array<PartySummary>>,
+  'getPartySummaryByDateRange' : ActorMethod<
+    [bigint, bigint],
+    Array<PartySummary>
+  >,
+  'getProductNames' : ActorMethod<[], Array<string>>,
+  'getProfitLossSummary' : ActorMethod<[bigint, bigint], ProfitLossSummary>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'savePartyGstNumber' : ActorMethod<[string, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

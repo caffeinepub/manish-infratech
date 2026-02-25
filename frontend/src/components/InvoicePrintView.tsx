@@ -1,165 +1,139 @@
+import React from 'react';
 import type { Bill } from '../backend';
-import { formatAmount } from '../utils/formatCurrency';
+import { formatCurrency } from '../utils/formatCurrency';
+import { useGetPartyGstNumber } from '../hooks/useQueries';
 
 interface InvoicePrintViewProps {
   bill: Bill;
 }
 
-export default function InvoicePrintView({ bill }: InvoicePrintViewProps) {
-  const today = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
+function formatBillDate(ns: bigint): string {
+  if (!ns) return '—';
+  const ms = Number(ns) / 1_000_000;
+  if (!ms) return '—';
+  const d = new Date(ms);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+}
 
-  const hasLineItems = bill.lineItems && bill.lineItems.length > 0;
+export default function InvoicePrintView({ bill }: InvoicePrintViewProps) {
+  const { data: gstNumber = '' } = useGetPartyGstNumber(bill.partyName);
 
   return (
-    <div className="print-invoice bg-white text-gray-900 max-w-3xl mx-auto p-10 font-sans">
+    <div className="bg-white p-8 max-w-4xl mx-auto print:p-4 print:max-w-none font-sans">
       {/* Header */}
-      <div className="border-b-4 border-navy pb-6 mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold text-navy tracking-wide">MANISH INFRATECH</h1>
-            <p className="text-sm text-gray-500 mt-1">Infrastructure & Construction Services</p>
+      <div className="border-2 border-navy-800 rounded-lg overflow-hidden mb-6 print:rounded-none">
+        {/* Company Header */}
+        <div className="bg-navy-800 text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src="/assets/generated/mi-logo.dim_128x128.png" alt="MI Logo" className="h-12 w-12 object-contain" />
+            <div>
+              <h1 className="text-2xl font-bold tracking-wide">MANISH INFRATECH</h1>
+              <p className="text-saffron-300 text-sm">Infrastructure & Construction Services</p>
+            </div>
           </div>
           <div className="text-right">
-            <span className="inline-block bg-saffron text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-              Tax Invoice
-            </span>
-            <p className="text-sm text-gray-500 mt-2">{today}</p>
+            <p className="text-saffron-300 text-xs uppercase tracking-widest">Tax Invoice</p>
+            <p className="text-white font-bold text-lg">{bill.invoiceNumber}</p>
+            <p className="text-saffron-200 text-sm">{formatBillDate(bill.billDate)}</p>
           </div>
         </div>
-      </div>
 
-      {/* Invoice Details */}
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Invoice Number</p>
-          <p className="font-mono font-bold text-navy text-lg">{bill.invoiceNumber}</p>
+        {/* Bill To Section */}
+        <div className="px-6 py-4 bg-navy-50 border-b border-navy-200">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-navy-500 uppercase tracking-wider font-semibold mb-1">Bill To</p>
+              <p className="text-navy-900 font-bold text-lg">{bill.partyName}</p>
+              {gstNumber && (
+                <p className="text-navy-600 text-sm mt-0.5">
+                  <span className="font-semibold">GST No:</span> {gstNumber}
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-navy-500 uppercase tracking-wider font-semibold mb-1">Invoice Date</p>
+              <p className="text-navy-800 font-semibold">{formatBillDate(bill.billDate)}</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bill To</p>
-          <p className="font-bold text-gray-800 text-lg">{bill.partyName}</p>
-        </div>
-      </div>
 
-      {/* Line Items Table */}
-      {hasLineItems && (
-        <div className="mb-8">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Item Details</h2>
-          <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+        {/* Line Items Table */}
+        <div className="px-6 py-4">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-navy text-white">
-                <th className="px-3 py-2.5 text-center font-semibold w-10">Sr.</th>
-                <th className="px-3 py-2.5 text-left font-semibold w-24">HSN Code</th>
-                <th className="px-3 py-2.5 text-left font-semibold">Product Name</th>
-                <th className="px-3 py-2.5 text-right font-semibold w-32">Amount (₹)</th>
-                <th className="px-3 py-2.5 text-right font-semibold w-28">GST 18% (₹)</th>
+              <tr className="border-b-2 border-navy-800">
+                <th className="text-left py-2 text-navy-700 font-semibold w-10">Sr.</th>
+                <th className="text-left py-2 text-navy-700 font-semibold w-24">HSN Code</th>
+                <th className="text-left py-2 text-navy-700 font-semibold">Product / Service</th>
+                <th className="text-right py-2 text-navy-700 font-semibold w-16">Qty</th>
+                <th className="text-right py-2 text-navy-700 font-semibold w-16">Unit</th>
+                <th className="text-right py-2 text-navy-700 font-semibold w-24">Rate (₹)</th>
+                <th className="text-right py-2 text-navy-700 font-semibold w-28">Amount (₹)</th>
               </tr>
             </thead>
             <tbody>
               {bill.lineItems.map((item, idx) => (
-                <tr
-                  key={idx}
-                  className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                >
-                  <td className="px-3 py-2.5 text-center text-gray-500">{idx + 1}</td>
-                  <td className="px-3 py-2.5 text-gray-600 font-mono text-xs">
-                    {item.hsnCode || '—'}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-800 font-medium">
-                    {item.productName || '—'}
-                  </td>
-                  <td className="px-3 py-2.5 text-right text-gray-800">{formatAmount(item.amount)}</td>
-                  <td className="px-3 py-2.5 text-right text-gray-600">{formatAmount(item.itemGst)}</td>
+                <tr key={idx} className={`border-b border-navy-100 ${idx % 2 === 0 ? '' : 'bg-navy-50'}`}>
+                  <td className="py-2 text-navy-600">{Number(item.srNo)}</td>
+                  <td className="py-2 text-navy-600">{item.hsnCode || '—'}</td>
+                  <td className="py-2 text-navy-800 font-medium">{item.productName}</td>
+                  <td className="py-2 text-right text-navy-700">{item.quantity}</td>
+                  <td className="py-2 text-right text-navy-600">{item.unit}</td>
+                  <td className="py-2 text-right text-navy-700">{formatCurrency(item.rate)}</td>
+                  <td className="py-2 text-right font-semibold text-navy-800">{formatCurrency(item.totalAmount)}</td>
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-navy/10 border-t-2 border-navy/20 font-semibold">
-                <td colSpan={3} className="px-3 py-2.5 text-right text-navy text-sm">
-                  Sub Total
-                </td>
-                <td className="px-3 py-2.5 text-right text-navy text-sm">
-                  {formatAmount(bill.baseAmount)}
-                </td>
-                <td className="px-3 py-2.5 text-right text-navy text-sm">
-                  {formatAmount(bill.totalGst)}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
-      )}
 
-      {/* Amount Breakdown Table */}
-      <table className="w-full mb-6 text-sm">
-        <thead>
-          <tr className="bg-navy text-white">
-            <th className="text-left px-4 py-3 rounded-tl-lg font-semibold">Description</th>
-            <th className="text-right px-4 py-3 rounded-tr-lg font-semibold">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="border-b border-gray-100">
-            <td className="px-4 py-3 text-gray-700">Base Amount (Services)</td>
-            <td className="px-4 py-3 text-right font-medium">{formatAmount(bill.baseAmount)}</td>
-          </tr>
-          <tr className="border-b border-gray-100 bg-gray-50">
-            <td className="px-4 py-3 text-gray-700">CGST @ 9%</td>
-            <td className="px-4 py-3 text-right font-medium">{formatAmount(bill.cgst)}</td>
-          </tr>
-          <tr className="border-b border-gray-100">
-            <td className="px-4 py-3 text-gray-700">SGST @ 9%</td>
-            <td className="px-4 py-3 text-right font-medium">{formatAmount(bill.sgst)}</td>
-          </tr>
-          <tr className="border-b border-gray-100 bg-gray-50">
-            <td className="px-4 py-3 text-gray-500 text-xs">Sub Total (incl. GST)</td>
-            <td className="px-4 py-3 text-right text-gray-500 text-xs">
-              {formatAmount(bill.baseAmount + bill.totalGst)}
-            </td>
-          </tr>
-          <tr className="border-b border-gray-100">
-            <td className="px-4 py-3 text-gray-500 text-xs">Round Off</td>
-            <td className="px-4 py-3 text-right text-gray-500 text-xs">
-              {bill.roundOff >= 0 ? '+' : ''}{formatAmount(bill.roundOff)}
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr className="bg-navy text-white">
-            <td className="px-4 py-4 rounded-bl-lg font-bold text-base">TOTAL AMOUNT</td>
-            <td className="px-4 py-4 rounded-br-lg text-right font-bold text-xl">{formatAmount(bill.finalAmount)}</td>
-          </tr>
-        </tfoot>
-      </table>
-
-      {/* GST Summary */}
-      <div className="bg-saffron/10 border border-saffron/20 rounded-lg p-4 mb-8">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">GST Summary</p>
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-gray-500">Total GST</p>
-            <p className="font-bold text-navy">{formatAmount(bill.totalGst)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">CGST (9%)</p>
-            <p className="font-bold text-navy">{formatAmount(bill.cgst)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">SGST (9%)</p>
-            <p className="font-bold text-navy">{formatAmount(bill.sgst)}</p>
+        {/* GST Summary */}
+        <div className="px-6 py-4 bg-navy-50 border-t border-navy-200">
+          <div className="flex justify-end">
+            <div className="w-72 space-y-1.5">
+              <div className="flex justify-between text-sm text-navy-700">
+                <span>Base Amount</span>
+                <span className="font-medium">{formatCurrency(bill.baseAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-navy-600">
+                <span>CGST @ 9%</span>
+                <span>{formatCurrency(bill.cgst)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-navy-600">
+                <span>SGST @ 9%</span>
+                <span>{formatCurrency(bill.sgst)}</span>
+              </div>
+              {Math.abs(bill.roundOff) > 0.001 && (
+                <div className="flex justify-between text-xs text-navy-500">
+                  <span>Round-off</span>
+                  <span>{bill.roundOff > 0 ? '+' : ''}{bill.roundOff.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-navy-900 border-t-2 border-navy-800 pt-2 text-base">
+                <span>Total Amount</span>
+                <span className="text-saffron-600">{formatCurrency(bill.finalAmount)}</span>
+              </div>
+              {bill.amountPaid > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-green-700">
+                    <span>Amount Paid</span>
+                    <span className="font-medium">{formatCurrency(bill.amountPaid)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold text-red-600">
+                    <span>Pending Amount</span>
+                    <span>{formatCurrency(bill.pendingAmount)}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 pt-4 text-center">
-        <p className="text-xs text-gray-400">
-          This is a computer-generated invoice. No signature required.
-        </p>
-        <p className="text-xs text-gray-400 mt-1">MANISH INFRATECH — Thank you for your business!</p>
+      <div className="text-center text-xs text-navy-400 mt-4 print:mt-2">
+        <p>This is a computer-generated invoice. No signature required.</p>
+        <p className="mt-1">Manish Infratech — Infrastructure & Construction Services</p>
       </div>
     </div>
   );

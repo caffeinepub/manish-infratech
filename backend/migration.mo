@@ -1,28 +1,24 @@
 import Map "mo:core/Map";
-import Nat "mo:core/Nat";
 import Principal "mo:core/Principal";
+import Float "mo:core/Float";
+import Int "mo:core/Int";
 
 module {
-  type OldBill = {
-    partyName : Text;
-    invoiceNumber : Text;
-    baseAmount : Float;
-    cgst : Float;
-    sgst : Float;
-    totalGst : Float;
-    roundOff : Float;
-    finalAmount : Float;
+  type UserProfile = {
+    name : Text;
   };
 
-  type NewLineItem = {
+  type LineItem = {
     srNo : Nat;
     hsnCode : Text;
     productName : Text;
-    amount : Float;
-    itemGst : Float;
+    quantity : Float;
+    unit : Text;
+    rate : Float;
+    totalAmount : Float;
   };
 
-  type NewBill = {
+  type BillOld = {
     partyName : Text;
     invoiceNumber : Text;
     baseAmount : Float;
@@ -31,27 +27,44 @@ module {
     totalGst : Float;
     roundOff : Float;
     finalAmount : Float;
-    lineItems : [NewLineItem];
+    amountPaid : Float;
+    pendingAmount : Float;
+    billDate : Int;
+    lineItems : [LineItem];
+  };
+
+  type BillNew = {
+    partyName : Text;
+    invoiceNumber : Text;
+    baseAmount : Float;
+    cgst : Float;
+    sgst : Float;
+    totalGst : Float;
+    roundOff : Float;
+    finalAmount : Float;
+    amountPaid : Float;
+    pendingAmount : Float;
+    billDate : Int;
+    lineItems : [LineItem];
+  };
+
+  type PartyProfile = {
+    gstNumber : Text;
   };
 
   type OldActor = {
-    userBills : Map.Map<Principal, Map.Map<Text, OldBill>>;
+    userProfiles : Map.Map<Principal, UserProfile>;
+    userBills : Map.Map<Principal, Map.Map<Text, BillOld>>;
+    partyGstNumbers : Map.Map<Text, PartyProfile>;
   };
 
   type NewActor = {
-    userBills : Map.Map<Principal, Map.Map<Text, NewBill>>;
+    userProfiles : Map.Map<Principal, UserProfile>;
+    userBills : Map.Map<Principal, Map.Map<Text, BillNew>>;
+    partyGstNumbers : Map.Map<Text, PartyProfile>;
   };
 
   public func run(old : OldActor) : NewActor {
-    let newUserBills = old.userBills.map<Principal, Map.Map<Text, OldBill>, Map.Map<Text, NewBill>>(
-      func(_p, oldBillMap) {
-        oldBillMap.map<Text, OldBill, NewBill>(
-          func(_invNum, oldBill) {
-            { oldBill with lineItems = [] };
-          }
-        );
-      }
-    );
-    { userBills = newUserBills };
+    old;
   };
 };

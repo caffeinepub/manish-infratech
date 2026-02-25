@@ -64,7 +64,20 @@ export default function SearchBillsPage() {
         </p>
       )}
 
-      <BillResultsTable bills={filteredBills} isLoading={isLoading} />
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <div className="animate-pulse space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 bg-muted rounded-lg" />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <BillResultsTable
+          bills={filteredBills}
+          emptyMessage="No bills match your search."
+        />
+      )}
     </div>
   );
 }

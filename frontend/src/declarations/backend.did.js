@@ -9,11 +9,19 @@
 import { IDL } from '@icp-sdk/core/candid';
 
 export const LineItem = IDL.Record({
+  'rate' : IDL.Float64,
   'srNo' : IDL.Nat,
+  'unit' : IDL.Text,
   'hsnCode' : IDL.Text,
   'productName' : IDL.Text,
-  'amount' : IDL.Float64,
-  'itemGst' : IDL.Float64,
+  'totalAmount' : IDL.Float64,
+  'quantity' : IDL.Float64,
+});
+export const BillOperation = IDL.Record({
+  'lineItems' : IDL.Vec(LineItem),
+  'billDate' : IDL.Int,
+  'invoiceNumber' : IDL.Text,
+  'partyName' : IDL.Text,
 });
 export const Bill = IDL.Record({
   'lineItems' : IDL.Vec(LineItem),
@@ -21,9 +29,12 @@ export const Bill = IDL.Record({
   'cgst' : IDL.Float64,
   'sgst' : IDL.Float64,
   'totalGst' : IDL.Float64,
+  'amountPaid' : IDL.Float64,
+  'billDate' : IDL.Int,
   'invoiceNumber' : IDL.Text,
   'baseAmount' : IDL.Float64,
   'partyName' : IDL.Text,
+  'pendingAmount' : IDL.Float64,
   'roundOff' : IDL.Float64,
 });
 export const UserRole = IDL.Variant({
@@ -32,11 +43,34 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const CompanyReport = IDL.Record({
+  'totalReceived' : IDL.Float64,
+  'totalServiceAmount' : IDL.Float64,
+  'bills' : IDL.Vec(Bill),
+  'totalPending' : IDL.Float64,
+});
+export const PartySummary = IDL.Record({
+  'gstNumber' : IDL.Text,
+  'totalPaid' : IDL.Float64,
+  'totalBilled' : IDL.Float64,
+  'partyName' : IDL.Text,
+  'billCount' : IDL.Nat,
+  'totalPending' : IDL.Float64,
+});
+export const ProfitLossSummary = IDL.Record({
+  'totalReceived' : IDL.Float64,
+  'totalOutstanding' : IDL.Float64,
+  'profitLossIndicator' : IDL.Bool,
+  'totalBilled' : IDL.Float64,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'addBill' : IDL.Func([IDL.Text, IDL.Text, IDL.Vec(LineItem)], [Bill], []),
+  'addBill' : IDL.Func([BillOperation], [Bill], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'billExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'deleteBill' : IDL.Func([IDL.Text], [Bill], []),
+  'editBill' : IDL.Func([IDL.Text, BillOperation], [Bill], []),
   'getAggregate' : IDL.Func(
       [],
       [IDL.Record({ 'totalGst' : IDL.Float64, 'totalAmount' : IDL.Float64 })],
@@ -47,6 +81,25 @@ export const idlService = IDL.Service({
   'getBillsByParty' : IDL.Func([IDL.Text], [IDL.Vec(Bill)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCompanyReport' : IDL.Func(
+      [IDL.Text, IDL.Int, IDL.Int],
+      [CompanyReport],
+      ['query'],
+    ),
+  'getPartyGstNumber' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+  'getPartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+  'getPartySummary' : IDL.Func([], [IDL.Vec(PartySummary)], ['query']),
+  'getPartySummaryByDateRange' : IDL.Func(
+      [IDL.Int, IDL.Int],
+      [IDL.Vec(PartySummary)],
+      ['query'],
+    ),
+  'getProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+  'getProfitLossSummary' : IDL.Func(
+      [IDL.Int, IDL.Int],
+      [ProfitLossSummary],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -54,17 +107,26 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'savePartyGstNumber' : IDL.Func([IDL.Text, IDL.Text], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const LineItem = IDL.Record({
+    'rate' : IDL.Float64,
     'srNo' : IDL.Nat,
+    'unit' : IDL.Text,
     'hsnCode' : IDL.Text,
     'productName' : IDL.Text,
-    'amount' : IDL.Float64,
-    'itemGst' : IDL.Float64,
+    'totalAmount' : IDL.Float64,
+    'quantity' : IDL.Float64,
+  });
+  const BillOperation = IDL.Record({
+    'lineItems' : IDL.Vec(LineItem),
+    'billDate' : IDL.Int,
+    'invoiceNumber' : IDL.Text,
+    'partyName' : IDL.Text,
   });
   const Bill = IDL.Record({
     'lineItems' : IDL.Vec(LineItem),
@@ -72,9 +134,12 @@ export const idlFactory = ({ IDL }) => {
     'cgst' : IDL.Float64,
     'sgst' : IDL.Float64,
     'totalGst' : IDL.Float64,
+    'amountPaid' : IDL.Float64,
+    'billDate' : IDL.Int,
     'invoiceNumber' : IDL.Text,
     'baseAmount' : IDL.Float64,
     'partyName' : IDL.Text,
+    'pendingAmount' : IDL.Float64,
     'roundOff' : IDL.Float64,
   });
   const UserRole = IDL.Variant({
@@ -83,11 +148,34 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const CompanyReport = IDL.Record({
+    'totalReceived' : IDL.Float64,
+    'totalServiceAmount' : IDL.Float64,
+    'bills' : IDL.Vec(Bill),
+    'totalPending' : IDL.Float64,
+  });
+  const PartySummary = IDL.Record({
+    'gstNumber' : IDL.Text,
+    'totalPaid' : IDL.Float64,
+    'totalBilled' : IDL.Float64,
+    'partyName' : IDL.Text,
+    'billCount' : IDL.Nat,
+    'totalPending' : IDL.Float64,
+  });
+  const ProfitLossSummary = IDL.Record({
+    'totalReceived' : IDL.Float64,
+    'totalOutstanding' : IDL.Float64,
+    'profitLossIndicator' : IDL.Bool,
+    'totalBilled' : IDL.Float64,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'addBill' : IDL.Func([IDL.Text, IDL.Text, IDL.Vec(LineItem)], [Bill], []),
+    'addBill' : IDL.Func([BillOperation], [Bill], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'billExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'deleteBill' : IDL.Func([IDL.Text], [Bill], []),
+    'editBill' : IDL.Func([IDL.Text, BillOperation], [Bill], []),
     'getAggregate' : IDL.Func(
         [],
         [IDL.Record({ 'totalGst' : IDL.Float64, 'totalAmount' : IDL.Float64 })],
@@ -98,6 +186,25 @@ export const idlFactory = ({ IDL }) => {
     'getBillsByParty' : IDL.Func([IDL.Text], [IDL.Vec(Bill)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCompanyReport' : IDL.Func(
+        [IDL.Text, IDL.Int, IDL.Int],
+        [CompanyReport],
+        ['query'],
+      ),
+    'getPartyGstNumber' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+    'getPartyNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'getPartySummary' : IDL.Func([], [IDL.Vec(PartySummary)], ['query']),
+    'getPartySummaryByDateRange' : IDL.Func(
+        [IDL.Int, IDL.Int],
+        [IDL.Vec(PartySummary)],
+        ['query'],
+      ),
+    'getProductNames' : IDL.Func([], [IDL.Vec(IDL.Text)], ['query']),
+    'getProfitLossSummary' : IDL.Func(
+        [IDL.Int, IDL.Int],
+        [ProfitLossSummary],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -105,6 +212,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'savePartyGstNumber' : IDL.Func([IDL.Text, IDL.Text], [], []),
   });
 };
 

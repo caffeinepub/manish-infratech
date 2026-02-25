@@ -4,7 +4,7 @@ import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGetCallerUserProfile } from '../hooks/useQueries';
 import { Button } from '@/components/ui/button';
-import { Building2, PlusCircle, Search, BarChart3, LogOut, Menu, X } from 'lucide-react';
+import { Building2, PlusCircle, Search, BarChart3, LogOut, Menu, X, Users } from 'lucide-react';
 import { useState } from 'react';
 
 interface LayoutProps {
@@ -15,6 +15,7 @@ const navLinks = [
   { to: '/add-bill', label: 'Add Bill', icon: PlusCircle },
   { to: '/search', label: 'Search Bills', icon: Search },
   { to: '/summary', label: 'Summary', icon: BarChart3 },
+  { to: '/party-summary', label: 'Party Summary', icon: Users },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -61,7 +62,7 @@ export default function Layout({ children }: LayoutProps) {
                   <Link
                     key={to}
                     to={to}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       isActive
                         ? 'bg-saffron text-white shadow-sm'
                         : 'text-white/80 hover:bg-white/10 hover:text-white'
