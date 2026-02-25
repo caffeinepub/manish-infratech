@@ -1,137 +1,85 @@
 {
   "kind": "build_request",
-  "title": "Full app aesthetic redesign: MI logo, white+blue+red theme, black text, green saved state, invoice column label fixes",
+  "title": "Improve invoice print view (remove paid/pending, show total only) and redesign login screen",
   "projectName": "Manish Infratech",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-70",
-      "text": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
+      "id": "REQ-75",
+      "text": "Update InvoicePrintView to remove the 'Amount Paid' and 'Pending Amount' fields from the printed invoice. Only the Final Amount (and its amount-in-words line) should appear in the GST summary section of the print layout. Do not change any other structural or content elements of the invoice (line items table, GST breakdown rows for Base Amount, CGST, SGST, Round-off, company header, party details, footer).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8",
-          "msg-10"
+          "msg-1"
         ],
         "quotes": [
-          "make it esthetic good looking MI written as logo in white+blue+red theme and whole app also",
-          "Redesign it and make it esthetic",
-          "all text in black color"
+          "remove amount pending and paid from printing only total amount should be written"
         ]
       },
       "acceptanceCriteria": [
-        "Navigation header has a deep navy blue background",
-        "MI logo badge (red square with bold white 'MI') is visible in the top-left of the header",
-        "'MANISH INFRATECH' text is visible in white bold typography next to the logo",
-        "All nav links are white with red hover/active styling",
-        "Logout button is red with white text",
-        "Header is consistent across Add Bill, Search Bills, Summary, Party Summary, and Company Report pages"
+        "The printed invoice does not display an 'Amount Paid' row or field.",
+        "The printed invoice does not display a 'Pending Amount' row or field.",
+        "The Final Amount row remains present and clearly visible in the GST summary section.",
+        "The amount-in-words line (e.g. 'Rupees X Only') continues to appear below the Final Amount on the printed view.",
+        "All other invoice content (header, party name, GST No., invoice number, bill date, line items table, Base Amount, CGST, SGST, Round-off, footer) is unchanged."
       ]
     },
     {
-      "id": "REQ-71",
-      "text": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
+      "id": "REQ-76",
+      "text": "Improve the visual design and aesthetics of the printed invoice in InvoicePrintView. Enhance layout polish, typography hierarchy, spacing, and overall professional appearance while strictly preserving the existing red-and-white color theme (red header band, white body, red accent borders on GST summary table, red typography for 'MANISH INFRATECH', MI logo in top-left). No structural column changes are permitted.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-1"
         ],
         "quotes": [
-          "white+blue+red theme and whole app also",
-          "Redesign it and make it esthetic"
+          "improve printing"
         ]
       },
       "acceptanceCriteria": [
-        "Page backgrounds across all pages are off-white or light gray, not pure white",
-        "Card/form containers have white backgrounds with subtle navy borders or shadows",
-        "Primary buttons (Save Bill, Search, etc.) are deep navy with white text",
-        "Table headers are navy blue with white text",
-        "Table rows alternate white and light blue-gray",
-        "Input fields show a navy blue focus ring",
-        "Red is used as an accent color for highlights, badges, active states, and error indicators"
+        "The printed invoice uses improved spacing, font sizing, and typographic hierarchy compared to the current version.",
+        "The red header band, white body background, red accent borders, and red 'MANISH INFRATECH' typography are preserved.",
+        "The MI logo (red/white square with 'MI' initials) continues to appear in the top-left corner of the header.",
+        "The line item table columns (Sr. No., HSN Code, Product Name, Qty, Unit, Rate ₹, Amount ₹) are unchanged.",
+        "The GST summary section columns and row labels are unchanged.",
+        "The overall invoice looks professional and aesthetically refined when printed or previewed."
       ]
     },
     {
-      "id": "REQ-72",
-      "text": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
+      "id": "REQ-77",
+      "text": "Redesign the SimpleLoginScreen component with an improved, professional, and visually appealing aesthetic. The redesign must use the existing brand colors (red and white, optionally with navy accents), display the MI logo and 'MANISH INFRATECH' branding prominently, and present the username and PIN input fields in a clean, well-spaced card layout. The hardcoded credentials (username: MANISHINFRATECH, PIN: 1752), inline error display, localStorage session storage behavior, and all authentication logic must remain completely unchanged.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10"
+          "msg-1"
         ],
         "quotes": [
-          "all are written in pure white so not visible so make all text in black color"
+          "improve login screen"
         ]
       },
       "acceptanceCriteria": [
-        "All form labels in AddBillForm and EditBillModal are black/dark text",
-        "All table cell text in BillResultsTable, PartySummaryPage, CompanyReportPage, and SummaryPage is black/dark",
-        "All page headings and section titles are black/dark",
-        "Input field text values are black/dark",
-        "No white text appears on light/white backgrounds anywhere in the app",
-        "'Save Bill' button label is clearly visible (white on navy background)"
-      ]
-    },
-    {
-      "id": "REQ-73",
-      "text": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-10"
-        ],
-        "quotes": [
-          "saved text in green not to use white text"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Bill saved confirmation message is displayed in green",
-        "Edit bill saved confirmation is displayed in green",
-        "GST number saved confirmation is displayed in green",
-        "No success message is rendered in white text on a white or light background"
-      ]
-    },
-    {
-      "id": "REQ-74",
-      "text": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-8",
-          "msg-10"
-        ],
-        "quotes": [
-          "in the invoice no written where to write quantity where unit and where price so fix it up",
-          "Fix invoice line item column headers/placeholders so it's clear which field is for Quantity, Unit, and Price/Rate"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Line item table in AddBillForm has visible column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)",
-        "Line item table in EditBillModal has the same visible column headers",
-        "Qty input has placeholder 'Qty'",
-        "Unit input has placeholder 'Unit'",
-        "Rate input has placeholder 'Rate'",
-        "HSN Code input has placeholder 'HSN Code'",
-        "Product Name input has placeholder 'Product Name'",
-        "Column headers are in dark/black text and clearly visible against the table header background",
-        "The printed invoice (InvoicePrintView) also displays the same column headers: Sr. No., HSN Code, Product Name, Qty, Unit, Rate (₹), Amount (₹)"
+        "The login screen displays a visually polished card or panel with the MI logo and 'MANISH INFRATECH' branding at the top.",
+        "Username and PIN fields are clearly labeled with readable dark text and proper spacing.",
+        "The login button uses brand colors (red or navy background with white text) and has a professional appearance.",
+        "An inline error message is shown in red/visible color for invalid credentials.",
+        "Successful login with MANISHINFRATECH / 1752 grants access to the app and stores the session in localStorage.",
+        "No change to authentication logic, credentials, or session management behavior."
       ]
     }
   ],
   "constraints": [
-    "Do not change the invoice print view's red header band, white body, or red accent GST summary borders — only the on-screen app theme is being updated",
-    "Do not modify files in frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "Do not change any backend logic, data models, or API signatures",
-    "The MI logo in the navigation header must be rendered as an inline styled HTML element (not a generated image file dependency)"
+    "Do not change any other part of the app beyond InvoicePrintView and SimpleLoginScreen.",
+    "Do not modify authentication logic, credentials (MANISHINFRATECH / 1752), or session management.",
+    "Do not change the structural column layout of the invoice line items table or the GST summary row labels.",
+    "Do not alter the red-and-white color theme of the invoice print view.",
+    "Do not change any backend code."
   ],
   "nonGoals": [
-    "Changing the invoice print view's red/white color scheme",
-    "Adding new pages or navigation routes",
-    "Modifying backend Motoko code",
-    "Changing authentication logic or credentials",
-    "Adding new form fields or data model changes"
+    "Changing the on-screen form views (AddBillForm, EditBillModal) in any way.",
+    "Modifying BillResultsTable, SummaryPage, CompanyReportPage, or PartySummaryPage.",
+    "Adding new columns or rows to the invoice print layout.",
+    "Changing the navigation header or Layout.tsx.",
+    "Any backend changes."
   ],
   "imageRequirements": {
     "required": [],

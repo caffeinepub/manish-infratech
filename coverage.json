@@ -1,113 +1,46 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T07:31:56.579Z",
+  "generatedAt": "2026-02-25T07:41:26.068Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 5,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-70",
-        "summary": "Redesign the main navigation header (Layout.tsx) with a professional aesthetic: use a deep navy blue background, display the MI logo (a bold square badge with 'MI' initials in white on a red background) on the left, followed by 'MANISH INFRATECH' in white bold typography. Navigation links (Add Bill, Search Bills, Summary, Party Summary) must be styled with white text and a red active/hover underline or highlight. The Logout button must be styled with a red background and white text. Apply this header consistently across all pages.",
+        "id": "REQ-75",
+        "summary": "Update InvoicePrintView to remove the 'Amount Paid' and 'Pending Amount' fields from the printed invoice. Only the Final Amount (and its amount-in-words line) should appear in the GST summary section of the print layout. Do not change any other structural or content elements of the invoice (line items table, GST breakdown rows for Base Amount, CGST, SGST, Round-off, company header, party details, footer).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/Layout.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/Layout.tsx"
-        ]
-      },
-      {
-        "id": "REQ-71",
-        "summary": "Apply a consistent white+blue+red color theme across every page of the app (Add Bill, Search Bills, Summary, Party Summary, Company Report). Page backgrounds must be warm off-white or light gray (not pure white). Section cards and form containers must have white backgrounds with a subtle navy blue border or shadow. Primary action buttons (Save Bill, Search, Apply Filter, Download Report) must use a deep navy blue background with white text. Secondary/outline buttons must use a white background with navy blue border and text. Table headers must use a deep navy blue background with white text. Table rows must alternate between white and a very light blue-gray. All input fields must have a navy blue focus ring.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/index.css",
-          "frontend/tailwind.config.js",
-          "frontend/src/pages/AddBillPage.tsx",
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/pages/SearchBillsPage.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/SummaryPage.tsx",
-          "frontend/src/components/SummaryCard.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/index.css",
-          "frontend/tailwind.config.js",
-          "frontend/src/pages/AddBillPage.tsx",
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/pages/SearchBillsPage.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/SummaryPage.tsx",
-          "frontend/src/components/SummaryCard.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
-          "frontend/src/components/EditBillModal.tsx"
-        ]
-      },
-      {
-        "id": "REQ-72",
-        "summary": "Change all body text, form labels, table cell text, heading text, and placeholder text throughout the entire app to use black or very dark gray (#1a1a1a or equivalent) instead of white. No text in the main content area (forms, tables, cards, page bodies) should be white. White text is only acceptable on intentionally dark/colored backgrounds such as the navigation header, navy button backgrounds, or red button backgrounds.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/index.css",
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/SearchBillsPage.tsx",
-          "frontend/src/pages/SummaryPage.tsx",
-          "frontend/src/components/SummaryCard.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
-          "frontend/src/pages/AddBillPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/index.css",
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/components/BillResultsTable.tsx",
-          "frontend/src/pages/SearchBillsPage.tsx",
-          "frontend/src/pages/SummaryPage.tsx",
-          "frontend/src/components/SummaryCard.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx",
-          "frontend/src/pages/CompanyReportPage.tsx",
-          "frontend/src/pages/AddBillPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-73",
-        "summary": "Display all success/saved confirmation messages and success toast notifications in green text or with a green background badge. This includes the bill saved confirmation after submitting AddBillForm, the edit saved confirmation after EditBillModal submission, the GST number saved confirmation on PartySummaryPage, and any other success state currently rendered in white or another non-visible color.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx",
-          "frontend/src/pages/PartySummaryPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-74",
-        "summary": "Fix the line item column headers and input field placeholders in AddBillForm and EditBillModal so that each column is clearly and visibly labeled. The table header row must show the following column labels in bold dark text: 'Sr. No.', 'HSN Code', 'Product Name', 'Qty', 'Unit', 'Rate (₹)', 'Amount (₹)'. Each input field within a row must have a matching placeholder (e.g. placeholder='Qty' for the quantity input, placeholder='Unit' for the unit input, placeholder='Rate' for the rate input). The computed Amount column must display the calculated value clearly. Ensure column headers are always visible and not hidden or white-on-white.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx",
           "frontend/src/components/InvoicePrintView.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/AddBillForm.tsx",
-          "frontend/src/components/EditBillModal.tsx"
+          "frontend/src/components/InvoicePrintView.tsx"
+        ]
+      },
+      {
+        "id": "REQ-76",
+        "summary": "Improve the visual design and aesthetics of the printed invoice in InvoicePrintView. Enhance layout polish, typography hierarchy, spacing, and overall professional appearance while strictly preserving the existing red-and-white color theme (red header band, white body, red accent borders on GST summary table, red typography for 'MANISH INFRATECH', MI logo in top-left). No structural column changes are permitted.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/InvoicePrintView.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/InvoicePrintView.tsx"
+        ]
+      },
+      {
+        "id": "REQ-77",
+        "summary": "Redesign the SimpleLoginScreen component with an improved, professional, and visually appealing aesthetic. The redesign must use the existing brand colors (red and white, optionally with navy accents), display the MI logo and 'MANISH INFRATECH' branding prominently, and present the username and PIN input fields in a clean, well-spaced card layout. The hardcoded credentials (username: MANISHINFRATECH, PIN: 1752), inline error display, localStorage session storage behavior, and all authentication logic must remain completely unchanged.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SimpleLoginScreen.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SimpleLoginScreen.tsx"
         ]
       }
     ]
@@ -117,19 +50,8 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/components/AddBillForm.tsx",
-    "frontend/src/components/BillResultsTable.tsx",
-    "frontend/src/components/EditBillModal.tsx",
-    "frontend/src/components/Layout.tsx",
-    "frontend/src/components/SummaryCard.tsx",
-    "frontend/src/index.css",
-    "frontend/src/pages/AddBillPage.tsx",
-    "frontend/src/pages/CompanyReportPage.tsx",
-    "frontend/src/pages/PartySummaryPage.tsx",
-    "frontend/src/pages/SearchBillsPage.tsx",
-    "frontend/src/pages/SummaryPage.tsx",
-    "frontend/tailwind.config.js",
+    "frontend/src/components/InvoicePrintView.tsx",
+    "frontend/src/components/SimpleLoginScreen.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
