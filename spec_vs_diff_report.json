@@ -1,0 +1,33 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T04:36:36.292Z",
+  "summary": "The diff implements all three requirements (REQ-10, REQ-11, REQ-12) with good fidelity. The backend data model is extended with LineItem, the addBill API accepts lineItems, aggregation logic is present, and the frontend AddBillForm and InvoicePrintView are updated accordingly. All major acceptance criteria appear to be met.",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "A migration module (backend/migration.mo) was added to handle backward compatibility for existing bills, converting old bills without lineItems to new bills with an empty lineItems array.",
+      "reason": "The build request did not request a migration module or any backward-migration strategy for existing bill records. While it requested backward compatibility, a separate migration.mo file was not specified.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    },
+    {
+      "description": "The hooks/useQueries.ts file was modified to update the useAddBill mutation to accept lineItems instead of baseAmount.",
+      "reason": "The build request explicitly states 'Do not edit files under frontend/src/hooks/' as a constraint. The diff shows frontend/src/hooks/useQueries.ts was modified.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts"
+      ]
+    }
+  ],
+  "confidence": 0.82,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/AddBillForm.tsx",
+    "frontend/src/components/InvoicePrintView.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json"
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 7,
+  "summary": "Manish Infratech billing/invoice management web app with authentication (single user access). Features: add bills with party name, invoice number, amount; auto-calculate CGST (9%) + SGST (9%) + round-off; save bills to database; search bills by party/invoice; view revenue and GST summary; download/print invoices as PDF. Bills now support multi-line items (up to 10 rows) with Sr. No., HSN Code, Product Name, individual amount, and GST per item.",
+  "architectural_notes": [
+    "Single-user access control: protect all routes behind authentication",
+    "Bills stored with fields: party, invoice, amount, cgst, sgst, gst, roundoff, final",
+    "Bill line items stored with fields: srNo, hsnCode, productName, amount, gst (up to 10 rows per bill)"
+  ],
+  "known_issues": [
+    "Authentication bug: app shows 'Access Denied' message but still grants access instead of blocking unauthorized users"
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-implement-internet-identity-authentication-so-the-app-is-only-accessible-by-the-authenticated-owner-on-first-login-register-the-caller-s-principal-as-the-sole-authorized-owner-on-all-subsequent-visits-gate-access-behind-that-stored-principal-any-other-principal-must-be-rejected-and-shown-an-unauthorized-message",
+      "title": "Implement Internet Identity authentication so the app is only accessible by the authenticated owner. On first login, register the caller's principal as the sole authorized owner. On all subsequent visits, gate access behind that stored principal — any other principal must be rejected and shown an 'Unauthorized' message.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-an-add-bill-form-with-fields-for-party-name-invoice-number-and-base-amount-on-submission-automatically-compute-cgst-9-sgst-9-total-gst-round-off-difference-between-rounded-integer-and-raw-total-and-final-amount-display-the-computed-breakdown-to-the-user-before-saving-then-save-the-bill-via-the-backend",
+      "title": "Build an 'Add Bill' form with fields for Party Name, Invoice Number, and Base Amount. On submission, automatically compute CGST (9%), SGST (9%), total GST, round-off (difference between rounded integer and raw total), and final amount. Display the computed breakdown to the user before saving, then save the bill via the backend.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-search-interface-where-the-owner-can-type-a-keyword-and-retrieve-all-bills-whose-party-name-or-invoice-number-contains-that-keyword-display-results-showing-party-name-invoice-number-and-final-amount-for-each-match",
+      "title": "Build a search interface where the owner can type a keyword and retrieve all bills whose party name or invoice number contains that keyword. Display results showing Party Name, Invoice Number, and Final Amount for each match.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-summary-view-that-shows-the-owner-s-overall-financial-totals-total-revenue-sum-of-all-final-amounts-cgst-total-sgst-total-and-total-gst",
+      "title": "Build a Summary view that shows the owner's overall financial totals: Total Revenue (sum of all final amounts), CGST total, SGST total, and Total GST.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-provide-a-per-invoice-pdf-download-print-feature-for-each-bill-generate-a-printable-view-or-browser-native-pdf-via-window-print-that-displays-company-name-manish-infratech-invoice-number-party-name-base-amount-cgst-9-sgst-9-round-off-and-final-amount",
+      "title": "Provide a per-invoice PDF download/print feature. For each bill, generate a printable view (or browser-native PDF via window.print) that displays: company name 'MANISH INFRATECH', invoice number, party name, base amount, CGST 9%, SGST 9%, round-off, and final amount.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-design-a-professional-clean-visual-theme-inspired-by-indian-business-accounting-software-warm-off-white-backgrounds-deep-navy-and-saffron-orange-accents-clear-tabular-layouts-for-bill-listings-and-prominent-rupee-currency-formatting-throughout-apply-consistently-across-all-views",
+      "title": "Design a professional, clean visual theme inspired by Indian business/accounting software: warm off-white backgrounds, deep navy and saffron-orange accents, clear tabular layouts for bill listings, and prominent rupee (₹) currency formatting throughout. Apply consistently across all views.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-authentication-authorization-gate-so-that-when-an-unauthorized-principal-logs-in-the-app-strictly-shows-the-access-denied-screen-and-does-not-render-any-app-content-navigation-or-routes-behind-it-the-authguard-component-must-block-all-child-rendering-when-the-user-is-authenticated-but-not-the-registered-owner-no-routes-or-data-should-be-accessible-until-the-principal-matches-the-stored-owner-principal",
+      "title": "Fix the authentication/authorization gate so that when an unauthorized principal logs in, the app strictly shows the 'Access Denied' screen and does NOT render any app content, navigation, or routes behind it. The AuthGuard component must block all child rendering when the user is authenticated but not the registered owner — no routes or data should be accessible until the principal matches the stored owner principal.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-add-bill-form-to-include-an-editable-line-item-table-with-up-to-10-rows-each-row-must-have-fields-for-sr-no-auto-incremented-hsn-code-text-input-product-name-text-input-and-item-amount-numeric-input-gst-per-item-18-of-item-amount-must-be-computed-and-displayed-automatically-per-row-the-form-must-allow-adding-rows-up-to-10-and-removing-rows-the-overall-bill-gst-breakdown-cgst-9-sgst-9-round-off-final-amount-must-be-derived-from-the-aggregated-item-totals-and-displayed-in-a-live-summary-below-the-table-before-saving-remove-the-single-base-amount-field-and-replace-it-with-the-aggregated-total-from-the-line-items",
+      "title": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows. Each row must have fields for Sr. No. (auto-incremented), HSN Code (text input), Product Name (text input), and Item Amount (numeric input). GST per item (18% of item amount) must be computed and displayed automatically per row. The form must allow adding rows (up to 10) and removing rows. The overall bill GST breakdown (CGST 9%, SGST 9%, round-off, final amount) must be derived from the aggregated item totals and displayed in a live summary below the table before saving. Remove the single 'Base Amount' field and replace it with the aggregated total from the line items.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-invoice-print-view-invoiceprintview-to-include-the-line-item-table-the-printed-invoice-must-display-a-table-with-columns-sr-no-hsn-code-product-name-amount-gst-for-all-items-on-the-bill-below-the-item-table-continue-to-show-the-existing-gst-summary-base-amount-cgst-9-sgst-9-round-off-final-amount",
+      "title": "Update the invoice print view (InvoicePrintView) to include the line item table. The printed invoice must display a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹) for all items on the bill. Below the item table, continue to show the existing GST summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount).",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Add bill with party name, invoice number, amount; auto-calculate CGST 9%, SGST 9%, round-off, and final amount; save to database",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Search bills by party name or invoice number",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "View total revenue and GST summary (CGST, SGST, total GST)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Download/print invoice as PDF",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Single-user authentication so the app is only accessible by the owner",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Create a backend data model and API to store bills with the following fields: party name (Text), invoice number (Text), base amount (Float), CGST 9% (Float), SGST 9% (Float), total GST (Float), round-off (Float), and final amount (Float). Expose create, read (all + search), and aggregate (sum of final amounts and total GST) operations.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Fix the backend authorization checks so that all protected endpoints (bill creation, bill retrieval, search, summary) return an error or reject the call when invoked by a principal that is not the registered owner. The backend must not return any data or perform any mutation for unauthorized callers.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Add multi-line item table to bills: up to 10 rows, each with Sr. No., HSN Code, Product Name, individual amount, and GST on that item. Aggregate item totals into the bill's overall GST and final amount calculations.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Extend the bill data model in the backend to include a list of line items (up to 10 rows). Each line item must store: Sr. No. (Nat), HSN Code (Text), Product Name (Text), individual item amount (Float), and GST on that item (Float, computed as 18% of item amount). Update the bill creation API to accept these line items and persist them alongside the existing bill fields. Aggregate the sum of all item amounts as the base amount and sum of all item GST values as the total GST, feeding into CGST (9%), SGST (9%), round-off, and final amount calculations.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Manish Infratech",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

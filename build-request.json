@@ -1,0 +1,87 @@
+{
+  "kind": "build_request",
+  "title": "Add multi-line item table (up to 10 rows) to bills with Sr. No., HSN Code, Product Name, Amount, and GST per item",
+  "projectName": "Manish Infratech",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-10",
+      "text": "Extend the bill data model in the backend to include a list of line items (up to 10 rows). Each line item must store: Sr. No. (Nat), HSN Code (Text), Product Name (Text), individual item amount (Float), and GST on that item (Float, computed as 18% of item amount). Update the bill creation API to accept these line items and persist them alongside the existing bill fields. Aggregate the sum of all item amounts as the base amount and sum of all item GST values as the total GST, feeding into CGST (9%), SGST (9%), round-off, and final amount calculations.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Bill record includes an array of line items, each containing Sr. No., HSN Code, Product Name, item amount, and GST on that item.",
+        "A bill can store between 1 and 10 line items.",
+        "The sum of all line item amounts equals the bill's base amount.",
+        "The sum of all line item GST values equals the bill's total GST (CGST + SGST).",
+        "Existing bill fields (party name, invoice number, CGST, SGST, round-off, final amount) remain intact and are correctly derived from the aggregated item totals.",
+        "Bill creation API accepts and persists the line items array."
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "text": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows. Each row must have fields for Sr. No. (auto-incremented), HSN Code (text input), Product Name (text input), and Item Amount (numeric input). GST per item (18% of item amount) must be computed and displayed automatically per row. The form must allow adding rows (up to 10) and removing rows. The overall bill GST breakdown (CGST 9%, SGST 9%, round-off, final amount) must be derived from the aggregated item totals and displayed in a live summary below the table before saving. Remove the single 'Base Amount' field and replace it with the aggregated total from the line items.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Add Bill form contains a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹).",
+        "Sr. No. is auto-incremented starting from 1 for each row.",
+        "GST per row is automatically computed as 18% of the item amount and displayed (read-only).",
+        "Users can add rows up to a maximum of 10.",
+        "Users can remove any row; Sr. No. values re-sequence automatically.",
+        "At least one item row is required before submitting.",
+        "The live GST breakdown summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) is updated in real time as item amounts change.",
+        "The form submits all line items along with party name and invoice number to the backend."
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "text": "Update the invoice print view (InvoicePrintView) to include the line item table. The printed invoice must display a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹) for all items on the bill. Below the item table, continue to show the existing GST summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "name of item for which amount is and it should be in 10 row like product Sr.no. HSN code and product name and amount of individual and then gst on it"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The printed invoice includes a line item table with Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹) columns.",
+        "All line items saved on the bill are displayed in the table.",
+        "The GST summary section (CGST, SGST, round-off, final amount) still appears below the item table.",
+        "The print layout remains clean and professional, consistent with the existing navy and saffron theme."
+      ]
+    }
+  ],
+  "constraints": [
+    "Existing bill fields (party name, invoice number, CGST, SGST, round-off, final amount) must be preserved and remain backward-compatible.",
+    "Maximum of 10 line items per bill.",
+    "Do not edit files under frontend/src/hooks/ or frontend/src/components/ui/.",
+    "Single-actor Motoko backend architecture must be maintained."
+  ],
+  "nonGoals": [
+    "Changing the authentication or authorization logic.",
+    "Adding new bill search or summary features.",
+    "Supporting more than 10 line items per bill.",
+    "Adding line-item-level editing after a bill has been saved."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

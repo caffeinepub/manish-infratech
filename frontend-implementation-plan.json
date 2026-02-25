@@ -1,0 +1,45 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Add multi-line item table (up to 10 rows) to bills with Sr. No., HSN Code, Product Name, Amount, and GST per item",
+  "requirements": [
+    {
+      "id": "REQ-11",
+      "summary": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows, auto-computed GST per item, and live aggregated totals",
+      "acceptanceCriteria": [
+        "The Add Bill form contains a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹).",
+        "Sr. No. is auto-incremented starting from 1 for each row.",
+        "GST per row is automatically computed as 18% of the item amount and displayed (read-only).",
+        "Users can add rows up to a maximum of 10.",
+        "Users can remove any row; Sr. No. values re-sequence automatically.",
+        "At least one item row is required before submitting.",
+        "The live GST breakdown summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount) is updated in real time as item amounts change.",
+        "The form submits all line items along with party name and invoice number to the backend."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AddBillForm.tsx",
+          "operation": "modify",
+          "description": "Replace the single 'Base Amount' field with a dynamic line item table component. Add state management for an array of line items (up to 10 rows), each containing srNo (auto-incremented), hsnCode (text), productName (text), amount (number), and computed itemGst (18% of amount). Implement 'Add Row' button (disabled after 10 rows) and 'Remove Row' action per row. Ensure Sr. No. re-sequences automatically when rows are removed. Compute aggregated baseAmount (sum of all item amounts), totalGst (sum of all itemGst), CGST (9% of baseAmount), SGST (9% of baseAmount), roundOff, and finalAmount in real-time. Display the live GST breakdown summary below the table. Validate that at least one line item exists before submission. Update the useAddBill mutation call to pass the lineItems array instead of baseAmount. Use the backend interface type LineItem from frontend/src/backend.d.ts for type safety."
+        }
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "summary": "Update the invoice print view to include the line item table with Sr. No., HSN Code, Product Name, Amount, and GST columns",
+      "acceptanceCriteria": [
+        "The printed invoice includes a line item table with Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹) columns.",
+        "All line items saved on the bill are displayed in the table.",
+        "The GST summary section (CGST, SGST, round-off, final amount) still appears below the item table.",
+        "The print layout remains clean and professional, consistent with the existing navy and saffron theme."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/InvoicePrintView.tsx",
+          "operation": "modify",
+          "description": "Add a line item table section between the invoice header and the existing GST breakdown table. Display columns for Sr. No., HSN Code, Product Name, Amount (₹), and GST (₹). Iterate over the bill.lineItems array and render each item as a table row with formatted currency values using the formatCurrency utility. Ensure the table styling is consistent with the existing print layout using the navy and saffron theme. Position the line item table above the existing amount breakdown table so the flow reads: header → line items → GST summary → footer."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T04:36:36.294Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 3,
+    "implemented": 2,
+    "items": [
+      {
+        "id": "REQ-10",
+        "summary": "Extend the bill data model in the backend to include a list of line items (up to 10 rows). Each line item must store: Sr. No. (Nat), HSN Code (Text), Product Name (Text), individual item amount (Float), and GST on that item (Float, computed as 18% of item amount). Update the bill creation API to accept these line items and persist them alongside the existing bill fields. Aggregate the sum of all item amounts as the base amount and sum of all item GST values as the total GST, feeding into CGST (9%), SGST (9%), round-off, and final amount calculations.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-11",
+        "summary": "Update the 'Add Bill' form to include an editable line item table with up to 10 rows. Each row must have fields for Sr. No. (auto-incremented), HSN Code (text input), Product Name (text input), and Item Amount (numeric input). GST per item (18% of item amount) must be computed and displayed automatically per row. The form must allow adding rows (up to 10) and removing rows. The overall bill GST breakdown (CGST 9%, SGST 9%, round-off, final amount) must be derived from the aggregated item totals and displayed in a live summary below the table before saving. Remove the single 'Base Amount' field and replace it with the aggregated total from the line items.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/AddBillForm.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/AddBillForm.tsx"
+        ]
+      },
+      {
+        "id": "REQ-12",
+        "summary": "Update the invoice print view (InvoicePrintView) to include the line item table. The printed invoice must display a table with columns: Sr. No., HSN Code, Product Name, Amount (₹), GST (₹) for all items on the bill. Below the item table, continue to show the existing GST summary (Base Amount, CGST 9%, SGST 9%, Round-off, Final Amount).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/InvoicePrintView.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/InvoicePrintView.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/AddBillForm.tsx",
+    "frontend/src/components/InvoicePrintView.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* ── Manish Infratech Palette ── */
+    /* Navy: oklch(0.28 0.09 255) ≈ #1E3A8A */
+    /* Saffron: oklch(0.72 0.18 55) ≈ #FF9933 */
+    /* Off-white background: oklch(0.98 0.005 80) */
+
+    --background: 0.98 0.005 80;
+    --foreground: 0.18 0.04 255;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.04 255;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.04 255;
+
+    /* Primary = Navy */
+    --primary: 0.28 0.09 255;
+    --primary-foreground: 0.98 0 0;
+
+    /* Secondary = light navy tint */
+    --secondary: 0.94 0.02 255;
+    --secondary-foreground: 0.28 0.09 255;
+
+    --muted: 0.94 0.01 80;
+    --muted-foreground: 0.52 0.03 255;
+
+    /* Accent = Saffron */
+    --accent: 0.72 0.18 55;
+    --accent-foreground: 1 0 0;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 0.88 0.02 255;
+    --input: 0.88 0.02 255;
+    --ring: 0.72 0.18 55;
+
+    --chart-1: 0.72 0.18 55;
+    --chart-2: 0.28 0.09 255;
+    --chart-3: 0.55 0.14 255;
+    --chart-4: 0.65 0.12 55;
+    --chart-5: 0.40 0.10 255;
+
+    --sidebar: 0.28 0.09 255;
+    --sidebar-foreground: 0.98 0 0;
+    --sidebar-primary: 0.72 0.18 55;
+    --sidebar-primary-foreground: 1 0 0;
+    --sidebar-accent: 0.35 0.09 255;
+    --sidebar-accent-foreground: 0.98 0 0;
+    --sidebar-border: 0.35 0.09 255;
+    --sidebar-ring: 0.72 0.18 55;
+  }
+
+  .dark {
+    --background: 0.14 0.04 255;
+    --foreground: 0.95 0.01 80;
+
+    --card: 0.20 0.05 255;
+    --card-foreground: 0.95 0.01 80;
+
+    --popover: 0.22 0.05 255;
+    --popover-foreground: 0.95 0.01 80;
+
+    --primary: 0.72 0.18 55;
+    --primary-foreground: 0.14 0.04 255;
+
+    --secondary: 0.25 0.06 255;
+    --secondary-foreground: 0.95 0.01 80;
+
+    --muted: 0.25 0.05 255;
+    --muted-foreground: 0.65 0.04 255;
+
+    --accent: 0.72 0.18 55;
+    --accent-foreground: 0.14 0.04 255;
+
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.985 0 0;
+
+    --border: 1 0 0 / 12%;
+    --input: 1 0 0 / 15%;
+    --ring: 0.72 0.18 55;
+
+    --sidebar: 0.20 0.05 255;
+    --sidebar-foreground: 0.95 0.01 80;
+    --sidebar-primary: 0.72 0.18 55;
+    --sidebar-primary-foreground: 0.14 0.04 255;
+    --sidebar-accent: 0.25 0.06 255;
+    --sidebar-accent-foreground: 0.95 0.01 80;
+    --sidebar-border: 1 0 0 / 12%;
+    --sidebar-ring: 0.72 0.18 55;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ── Print Styles ── */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .print-invoice {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+  }
+}
