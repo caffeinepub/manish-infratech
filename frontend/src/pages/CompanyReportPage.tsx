@@ -1,193 +1,152 @@
 import React, { useState } from 'react';
-import { Download, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
-import { useGetCompanyReport, useGetUniquePartyNames } from '../hooks/useQueries';
+import { useGetUniquePartyNames, useGetCompanyReport } from '../hooks/useQueries';
 import { useActor } from '../hooks/useActor';
 import BillResultsTable from '../components/BillResultsTable';
-import { formatINR } from '../utils/formatCurrency';
 
-function dateToNano(date: string): bigint {
-  return BigInt(new Date(date).getTime()) * 1_000_000n;
-}
-
-function getDefaultDateRange() {
-  const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return {
-    from: from.toISOString().split('T')[0],
-    to: to.toISOString().split('T')[0],
-  };
+function formatCurrency(amount: number): string {
+  return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function CompanyReportPage() {
-  const defaults = getDefaultDateRange();
-  const [selectedParty, setSelectedParty] = useState('');
-  const [fromDate, setFromDate] = useState(defaults.from);
-  const [toDate, setToDate] = useState(defaults.to);
-
   const { actor, isFetching: actorFetching } = useActor();
-  const { data: partyNames = [], isLoading: partiesLoading } = useGetUniquePartyNames();
-  const {
-    data: report,
-    isLoading: reportLoading,
-    isError: reportError,
-  } = useGetCompanyReport(
-    selectedParty,
-    dateToNano(fromDate),
-    dateToNano(toDate)
-  );
+  const currentYear = new Date().getFullYear();
+  const [selectedParty, setSelectedParty] = useState('');
+  const [fromDate, setFromDate] = useState(`${currentYear}-04-01`);
+  const [toDate, setToDate] = useState(`${currentYear + 1}-03-31`);
 
-  const isConnecting = actorFetching && !actor;
-  const hasError = (!actorFetching && !actor) || reportError;
+  const { data: partyNames = [] } = useGetUniquePartyNames();
 
-  const handleExportCSV = () => {
+  const fromMs = new Date(fromDate).getTime();
+  const toMs = new Date(toDate + 'T23:59:59').getTime();
+  const fromNs = fromMs * 1_000_000;
+  const toNs = toMs * 1_000_000;
+
+  const { data: report, isLoading, isError } = useGetCompanyReport(selectedParty, fromNs, toNs);
+
+  const isConnectionError = !actorFetching && !actor;
+
+  const downloadCSV = () => {
     if (!report) return;
-    const headers = ['Invoice No', 'Party Name', 'Date', 'Base Amount', 'CGST', 'SGST', 'Final Amount', 'Amount Paid', 'Pending'];
-    const rows = report.bills.map((b) => {
-      const ms = Number(BigInt(b.billDate) / 1_000_000n);
+    const headers = ['Invoice No', 'Party Name', 'Date', 'Base Amount', 'GST', 'Final Amount', 'Paid', 'Pending'];
+    const rows = report.bills.map(b => {
+      const ms = Number(b.billDate) / 1_000_000;
       const date = new Date(ms).toLocaleDateString('en-IN');
-      return [
-        b.invoiceNumber,
-        b.partyName,
-        date,
-        b.baseAmount.toFixed(2),
-        b.cgst.toFixed(2),
-        b.sgst.toFixed(2),
-        b.finalAmount.toFixed(2),
-        b.amountPaid.toFixed(2),
-        b.pendingAmount.toFixed(2),
-      ];
+      return [b.invoiceNumber, b.partyName, date, b.baseAmount, b.totalGst, b.finalAmount, b.amountPaid, b.pendingAmount];
     });
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${selectedParty}_report_${fromDate}_to_${toDate}.csv`;
+    a.download = `report_${selectedParty}_${fromDate}_to_${toDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  if (isConnecting) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Company Report</h1>
-        <div className="flex items-center justify-center py-16">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm">Connecting to server…</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Company Report</h1>
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <AlertCircle className="h-10 w-10 text-destructive" />
-          <p className="text-base font-semibold text-foreground">
-            Unable to connect to server. Please refresh and try again.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Company Report</h1>
-        {report && selectedParty && (
-          <button
-            onClick={handleExportCSV}
-            className="no-print flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </button>
-        )}
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Company Report</h1>
+        <p className="text-gray-600 text-sm mt-1">Detailed billing report for a specific party</p>
       </div>
 
       {/* Filters */}
-      <div className="no-print flex flex-wrap gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">Party:</label>
-          <select
-            value={selectedParty}
-            onChange={(e) => setSelectedParty(e.target.value)}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring min-w-[180px]"
-          >
-            <option value="">Select a party…</option>
-            {partyNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">From:</label>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">To:</label>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+      <div className="bg-white rounded-lg shadow p-5 mb-6">
+        <h2 className="text-base font-semibold text-gray-800 mb-3">Report Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Party *</label>
+            <select
+              value={selectedParty}
+              onChange={e => setSelectedParty(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+            >
+              <option value="">-- Select a party --</option>
+              {partyNames.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+            />
+          </div>
         </div>
       </div>
 
-      {!selectedParty ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <p>Select a party to view their report.</p>
+      {/* Error States */}
+      {isConnectionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm font-medium">
+          Unable to connect to the backend. Please refresh the page.
         </div>
-      ) : reportLoading || partiesLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      )}
+      {isError && !isConnectionError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm font-medium">
+          Failed to load report data.
         </div>
-      ) : report ? (
+      )}
+
+      {!selectedParty && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 mb-4 text-sm font-medium">
+          Please select a party to view the report.
+        </div>
+      )}
+
+      {/* Report Summary Cards */}
+      {report && selectedParty && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Billed</p>
-              <p className="text-lg font-bold text-foreground">{formatINR(report.totalServiceAmount)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="bg-brand-red rounded-lg p-5 text-white shadow">
+              <div className="text-xs font-semibold uppercase tracking-wide text-red-100 mb-1">Total Billed</div>
+              <div className="text-2xl font-bold">{formatCurrency(report.totalServiceAmount)}</div>
             </div>
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Received</p>
-              <p className="text-lg font-bold text-green-600">{formatINR(report.totalReceived)}</p>
+            <div className="bg-white rounded-lg border border-gray-200 p-5 shadow">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-1">Total Received</div>
+              <div className="text-2xl font-bold text-green-700">{formatCurrency(report.totalReceived)}</div>
             </div>
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Pending</p>
-              <p className="text-lg font-bold text-destructive">{formatINR(report.totalPending)}</p>
+            <div className="bg-white rounded-lg border border-gray-200 p-5 shadow">
+              <div className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-1">Total Pending</div>
+              <div className="text-2xl font-bold text-red-600">{formatCurrency(report.totalPending)}</div>
             </div>
           </div>
 
-          <div className="mt-2">
-            <h2 className="text-lg font-semibold text-foreground mb-3">
-              Bills for {selectedParty} ({report.bills.length})
-            </h2>
-            <BillResultsTable bills={report.bills} />
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">
+                Bills for {selectedParty} ({report.bills.length})
+              </h2>
+              <button
+                onClick={downloadCSV}
+                className="px-4 py-2 bg-brand-red hover:bg-red-700 text-white font-medium text-sm rounded transition-colors"
+              >
+                Download CSV
+              </button>
+            </div>
+            {isLoading ? (
+              <div className="p-8 text-center text-gray-500">Loading report...</div>
+            ) : (
+              <div className="p-4">
+                <BillResultsTable bills={report.bills} />
+              </div>
+            )}
           </div>
         </>
-      ) : null}
+      )}
     </div>
   );
 }

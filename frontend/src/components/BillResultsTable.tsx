@@ -1,170 +1,141 @@
 import React, { useState } from 'react';
-import { Bill } from '../backend';
-import { useDeleteBill } from '../hooks/useQueries';
-import EditBillModal from './EditBillModal';
 import { useNavigate } from '@tanstack/react-router';
-import { Edit2, Trash2, Printer, AlertTriangle, Loader2 } from 'lucide-react';
+import { useDeleteBill } from '../hooks/useQueries';
+import type { Bill } from '../backend';
 
 interface BillResultsTableProps {
   bills: Bill[];
+  onPrint?: (invoiceNumber: string) => void;
+  showActions?: boolean;
 }
 
-const formatDate = (billDate: bigint): string => {
-  const ms = Number(billDate / 1_000_000n);
-  const date = new Date(ms);
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = date.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
-};
-
-const formatINR = (amount: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(amount);
-
-export default function BillResultsTable({ bills }: BillResultsTableProps) {
-  const [editingBill, setEditingBill] = useState<Bill | null>(null);
-  const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
-  const deleteMutation = useDeleteBill();
+export default function BillResultsTable({ bills, onPrint, showActions = true }: BillResultsTableProps) {
   const navigate = useNavigate();
+  const deleteBillMutation = useDeleteBill();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
 
   const handleDelete = async (invoiceNumber: string) => {
-    if (!window.confirm(`Are you sure you want to delete invoice ${invoiceNumber}?`)) return;
-    setDeletingInvoice(invoiceNumber);
+    if (!confirm(`Are you sure you want to delete invoice ${invoiceNumber}?`)) return;
+    setDeletingId(invoiceNumber);
     try {
-      await deleteMutation.mutateAsync(invoiceNumber);
+      await deleteBillMutation.mutateAsync(invoiceNumber);
     } finally {
-      setDeletingInvoice(null);
+      setDeletingId(null);
     }
   };
 
-  if (bills.length === 0) {
-    return (
-      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', padding: '40px', textAlign: 'center' }}>
-        <AlertTriangle size={32} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
-        <p style={{ color: '#64748b', fontSize: '15px', fontWeight: 500 }}>No bills found.</p>
-      </div>
-    );
-  }
+  const handlePrint = (invoiceNumber: string) => {
+    if (onPrint) {
+      onPrint(invoiceNumber);
+    } else {
+      navigate({ to: '/invoice/$invoiceNumber', params: { invoiceNumber } });
+    }
+  };
+
+  const formatDate = (billDate: bigint) => {
+    const ms = Number(billDate) / 1_000_000;
+    return new Date(ms).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   return (
     <>
-      <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #bfdbfe', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(30,58,138,0.06)' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#1e3a8a' }}>
-                {['Invoice No.', 'Party Name', 'Date', 'Base Amount', 'GST (18%)', 'Total Amount', 'Paid', 'Pending', 'Actions'].map(header => (
-                  <th
-                    key={header}
-                    style={{
-                      color: '#ffffff',
-                      padding: '12px 14px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      textAlign: header === 'Actions' ? 'center' : 'left',
-                      whiteSpace: 'nowrap',
-                      letterSpacing: '0.3px',
-                    }}
-                  >
-                    {header}
-                  </th>
-                ))}
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-brand-red text-white">
+              <th className="px-3 py-3 text-left font-semibold">Invoice #</th>
+              <th className="px-3 py-3 text-left font-semibold">Party Name</th>
+              <th className="px-3 py-3 text-left font-semibold">Party GST</th>
+              <th className="px-3 py-3 text-left font-semibold">Date</th>
+              <th className="px-3 py-3 text-right font-semibold">Amount (₹)</th>
+              <th className="px-3 py-3 text-right font-semibold">Paid (₹)</th>
+              <th className="px-3 py-3 text-right font-semibold">Pending (₹)</th>
+              {showActions && <th className="px-3 py-3 text-center font-semibold">Actions</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {bills.length === 0 ? (
+              <tr>
+                <td colSpan={showActions ? 8 : 7} className="px-3 py-8 text-center text-gray-500">
+                  No bills found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {bills.map((bill, index) => (
+            ) : (
+              bills.map((bill, idx) => (
                 <tr
                   key={bill.invoiceNumber}
-                  style={{
-                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff',
-                    borderBottom: '1px solid #dbeafe',
-                    transition: 'background-color 0.1s ease',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = '#dbeafe'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.backgroundColor = index % 2 === 0 ? '#ffffff' : '#eff6ff'; }}
+                  className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-red-50 transition-colors`}
                 >
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#1e3a8a', fontWeight: 600 }}>
-                    {bill.invoiceNumber}
+                  <td className="px-3 py-2.5 font-medium text-gray-900">{bill.invoiceNumber}</td>
+                  <td className="px-3 py-2.5 text-gray-800">{bill.partyName}</td>
+                  <td className="px-3 py-2.5 text-gray-600 text-xs font-mono">
+                    {bill.partyGstNo || <span className="text-gray-400">—</span>}
                   </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#1a1a2e', fontWeight: 500 }}>
-                    {bill.partyName}
+                  <td className="px-3 py-2.5 text-gray-700">{formatDate(bill.billDate)}</td>
+                  <td className="px-3 py-2.5 text-right text-gray-800 font-medium">
+                    {bill.finalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
-                    {formatDate(bill.billDate)}
+                  <td className="px-3 py-2.5 text-right text-green-700 font-medium">
+                    {bill.amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#374151' }}>
-                    {formatINR(bill.baseAmount)}
+                  <td className="px-3 py-2.5 text-right font-medium" style={{ color: bill.pendingAmount > 0 ? '#c0392b' : '#16a34a' }}>
+                    {bill.pendingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#374151' }}>
-                    {formatINR(bill.totalGst)}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#1a1a2e', fontWeight: 700 }}>
-                    {formatINR(bill.finalAmount)}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: '#16a34a', fontWeight: 600 }}>
-                    {formatINR(bill.amountPaid)}
-                  </td>
-                  <td style={{ padding: '11px 14px', fontSize: '13px', color: bill.pendingAmount > 0 ? '#dc2626' : '#16a34a', fontWeight: 600 }}>
-                    {formatINR(bill.pendingAmount)}
-                  </td>
-                  <td style={{ padding: '11px 14px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => setEditingBill(bill)}
-                        title="Edit"
-                        style={{
-                          backgroundColor: '#eff6ff', color: '#1e3a8a',
-                          border: '1px solid #bfdbfe', borderRadius: '5px',
-                          padding: '5px 8px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: '3px',
-                          fontSize: '12px', fontWeight: 600,
-                        }}
-                      >
-                        <Edit2 size={12} />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => navigate({ to: `/invoice/${bill.invoiceNumber}/print` })}
-                        title="Print"
-                        style={{
-                          backgroundColor: '#f0fdf4', color: '#16a34a',
-                          border: '1px solid #bbf7d0', borderRadius: '5px',
-                          padding: '5px 8px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: '3px',
-                          fontSize: '12px', fontWeight: 600,
-                        }}
-                      >
-                        <Printer size={12} />
-                        Print
-                      </button>
-                      <button
-                        onClick={() => handleDelete(bill.invoiceNumber)}
-                        disabled={deletingInvoice === bill.invoiceNumber}
-                        title="Delete"
-                        style={{
-                          backgroundColor: '#fef2f2', color: '#dc2626',
-                          border: '1px solid #fecaca', borderRadius: '5px',
-                          padding: '5px 8px', cursor: deletingInvoice === bill.invoiceNumber ? 'not-allowed' : 'pointer',
-                          display: 'flex', alignItems: 'center', gap: '3px',
-                          fontSize: '12px', fontWeight: 600,
-                          opacity: deletingInvoice === bill.invoiceNumber ? 0.6 : 1,
-                        }}
-                      >
-                        {deletingInvoice === bill.invoiceNumber ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+                  {showActions && (
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setEditingBill(bill)}
+                          className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handlePrint(bill.invoiceNumber)}
+                          className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 font-medium"
+                        >
+                          Print
+                        </button>
+                        <button
+                          onClick={() => handleDelete(bill.invoiceNumber)}
+                          disabled={deletingId === bill.invoiceNumber}
+                          className="px-2 py-1 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 font-medium disabled:opacity-50"
+                        >
+                          {deletingId === bill.invoiceNumber ? '...' : 'Del'}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
+      {/* Edit Modal */}
       {editingBill && (
-        <EditBillModal bill={editingBill} onClose={() => setEditingBill(null)} />
+        <EditBillModalLazy bill={editingBill} onClose={() => setEditingBill(null)} />
       )}
     </>
   );
+}
+
+// Lazy import to avoid circular dependency
+function EditBillModalLazy({ bill, onClose }: { bill: Bill; onClose: () => void }) {
+  const [EditBillModal, setEditBillModal] = React.useState<React.ComponentType<{ bill: Bill; onClose: () => void }> | null>(null);
+
+  React.useEffect(() => {
+    import('./EditBillModal').then(mod => {
+      setEditBillModal(() => mod.default);
+    });
+  }, []);
+
+  if (!EditBillModal) return null;
+  return <EditBillModal bill={bill} onClose={onClose} />;
 }

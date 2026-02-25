@@ -5,68 +5,96 @@ import {
   createRootRoute,
   RouterProvider,
   Outlet,
+  redirect,
 } from '@tanstack/react-router';
 import AuthGuard from './components/AuthGuard';
 import Layout from './components/Layout';
+import SummaryPage from './pages/SummaryPage';
 import AddBillPage from './pages/AddBillPage';
 import SearchBillsPage from './pages/SearchBillsPage';
-import SummaryPage from './pages/SummaryPage';
 import PartySummaryPage from './pages/PartySummaryPage';
 import CompanyReportPage from './pages/CompanyReportPage';
+import CompanySettingsPage from './pages/CompanySettingsPage';
 import InvoicePrintPage from './pages/InvoicePrintPage';
 
-function RootLayout() {
-  return (
+// Root route with AuthGuard
+const rootRoute = createRootRoute({
+  component: () => (
     <AuthGuard>
-      <Layout />
+      <Outlet />
     </AuthGuard>
-  );
-}
-
-const rootRoute = createRootRoute({ component: RootLayout });
-
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: AddBillPage,
+  ),
 });
 
-const searchRoute = createRoute({
+// Layout route
+const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/search',
-  component: SearchBillsPage,
+  id: 'layout',
+  component: Layout,
+});
+
+// Index redirect
+const indexRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/',
+  beforeLoad: () => {
+    throw redirect({ to: '/summary' });
+  },
+  component: () => null,
 });
 
 const summaryRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/summary',
   component: SummaryPage,
 });
 
-const partySummaryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/party-summary',
+const addBillRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/add-bill',
+  component: AddBillPage,
+});
+
+const searchRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/search',
+  component: SearchBillsPage,
+});
+
+const partiesRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/parties',
   component: PartySummaryPage,
 });
 
 const companyReportRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/company-report',
   component: CompanyReportPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/settings',
+  component: CompanySettingsPage,
+});
+
 const invoicePrintRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/invoice/$id/print',
+  path: '/invoice/$invoiceNumber',
   component: InvoicePrintPage,
 });
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
-  searchRoute,
-  summaryRoute,
-  partySummaryRoute,
-  companyReportRoute,
+  layoutRoute.addChildren([
+    indexRoute,
+    summaryRoute,
+    addBillRoute,
+    searchRoute,
+    partiesRoute,
+    companyReportRoute,
+    settingsRoute,
+  ]),
   invoicePrintRoute,
 ]);
 

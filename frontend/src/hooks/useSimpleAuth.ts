@@ -1,32 +1,45 @@
-const AUTH_KEY = 'manish_infratech_auth';
+const AUTH_KEY = 'simpleAuth';
 const VALID_USERNAME = 'MANISHINFRATECH';
 const VALID_PASSWORD = '1752';
 
 export function getIsAuthenticated(): boolean {
   try {
-    const val = localStorage.getItem(AUTH_KEY);
-    return val === 'authenticated';
+    return localStorage.getItem(AUTH_KEY) === 'authenticated';
   } catch {
     return false;
   }
 }
 
+import { useState } from 'react';
+
 export function useSimpleAuth() {
-  function login(username: string, password: string): boolean {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => getIsAuthenticated());
+  const [error, setError] = useState<string | null>(null);
+
+  const login = (username: string, password: string): boolean => {
     if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, 'authenticated');
+      try {
+        localStorage.setItem(AUTH_KEY, 'authenticated');
+      } catch {
+        // ignore storage errors
+      }
+      setIsAuthenticated(true);
+      setError(null);
       return true;
+    } else {
+      setError('Invalid username or password');
+      return false;
     }
-    return false;
-  }
+  };
 
-  function logout() {
-    localStorage.removeItem(AUTH_KEY);
-  }
+  const logout = () => {
+    try {
+      localStorage.removeItem(AUTH_KEY);
+    } catch {
+      // ignore storage errors
+    }
+    setIsAuthenticated(false);
+  };
 
-  function isAuthenticated(): boolean {
-    return getIsAuthenticated();
-  }
-
-  return { login, logout, isAuthenticated };
+  return { isAuthenticated, login, logout, error };
 }

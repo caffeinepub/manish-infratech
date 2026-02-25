@@ -15,6 +15,7 @@ export interface Bill {
   'finalAmount' : number,
   'cgst' : number,
   'sgst' : number,
+  'siteAddress' : string,
   'totalGst' : number,
   'amountPaid' : number,
   'billDate' : bigint,
@@ -23,19 +24,30 @@ export interface Bill {
   'partyName' : string,
   'pendingAmount' : number,
   'roundOff' : number,
+  'partyGstNo' : [] | [string],
 }
 export interface BillOperation {
   'lineItems' : Array<LineItem>,
+  'siteAddress' : string,
   'amountPaid' : number,
   'billDate' : bigint,
   'invoiceNumber' : string,
   'partyName' : string,
+  'partyGstNo' : [] | [string],
 }
 export interface CompanyReport {
   'totalReceived' : number,
   'totalServiceAmount' : number,
   'bills' : Array<Bill>,
   'totalPending' : number,
+}
+export interface CompanySettings {
+  'ifscCode' : string,
+  'bankName' : string,
+  'gstin' : string,
+  'panNumber' : string,
+  'accountNumber' : string,
+  'companyAddress' : string,
 }
 export interface LineItem {
   'rate' : number,
@@ -46,9 +58,11 @@ export interface LineItem {
   'totalAmount' : number,
   'quantity' : number,
 }
+export interface PartyProfile { 'gstNumber' : string, 'address' : string }
 export interface PartySummary {
   'gstNumber' : string,
   'totalPaid' : number,
+  'address' : string,
   'totalBilled' : number,
   'partyName' : string,
   'billCount' : bigint,
@@ -81,7 +95,8 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCompanyReport' : ActorMethod<[string, bigint, bigint], CompanyReport>,
-  'getPartyGstNumber' : ActorMethod<[string], string>,
+  'getCompanySettings' : ActorMethod<[], [] | [CompanySettings]>,
+  'getPartyProfile' : ActorMethod<[string], PartyProfile>,
   'getPartySummary' : ActorMethod<[], Array<PartySummary>>,
   'getPartySummaryByDateRange' : ActorMethod<
     [bigint, bigint],
@@ -93,6 +108,8 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveCompanySettings' : ActorMethod<[CompanySettings], undefined>,
+  'savePartyAddress' : ActorMethod<[string, string], undefined>,
   'savePartyGstNumber' : ActorMethod<[string, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

@@ -7,14 +7,14 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const [authenticated, setAuthenticated] = useState(() => getIsAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => getIsAuthenticated());
 
-  if (!authenticated) {
-    return (
-      <SimpleLoginScreen
-        onLogin={() => setAuthenticated(true)}
-      />
-    );
+  const handleLogin = () => {
+    setIsAuthenticated(getIsAuthenticated());
+  };
+
+  if (!isAuthenticated) {
+    return <SimpleLoginScreen onLogin={handleLogin} />;
   }
 
   return <>{children}</>;

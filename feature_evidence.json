@@ -2,13 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-css-media-print-rules-to-the-global-stylesheet-frontend-src-index-css-that-hide-the-navigation-header-the-sticky-nav-bar-containing-the-mi-logo-manish-infratech-text-navigation-links-and-logout-button-and-all-other-screen-only-ui-elements-page-action-buttons-sidebars-breadcrumbs-filter-controls-during-printing-only-the-invoice-content-rendered-by-invoiceprintview-must-appear-on-the-printed-page-the-company-header-with-mi-logo-manish-infratech-name-party-name-party-gst-number-invoice-number-bill-date-line-items-table-and-gst-summary-section-no-website-chrome-must-appear-on-any-printed-page",
-      "featureTitle": "Add CSS `@media print` rules to the global stylesheet (frontend/src/index.css) that hide the navigation header (the sticky nav bar containing the MI logo, MANISH INFRATECH text, navigation links, and logout button) and all other screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls) during printing. Only the invoice content rendered by InvoicePrintView must appear on the printed page: the company header with MI logo, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. No website chrome must appear on any printed page.",
+      "featureId": "feature-restore-the-full-version-24-ui-exactly-as-it-was-including-the-company-logo-layout-color-scheme-navigation-and-all-existing-components-summary-cards-bill-table-add-bill-form-search-party-summary-company-report-settings-invoice-print-view-do-not-alter-any-existing-version-24-design-or-functionality",
+      "featureTitle": "Restore the full Version 24 UI exactly as it was, including the company logo, layout, color scheme, navigation, and all existing components (summary cards, bill table, add bill form, search, party summary, company report, settings, invoice print view). Do not alter any existing Version 24 design or functionality.",
       "files": [
-        "frontend/src/components/InvoicePrintView.tsx",
-        "frontend/src/components/Layout.tsx",
-        "frontend/src/index.css",
-        "frontend/src/pages/InvoicePrintPage.tsx"
+        "frontend/src/components/InvoicePrintView.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -19,19 +16,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-93"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-audit-and-fix-the-backend-canister-actor-initialization-in-frontend-src-hooks-useactor-ts-to-ensure-the-icp-backend-canister-actor-is-created-using-the-anonymous-identity-instantiated-once-cached-and-reused-across-all-sessions-verify-that-the-candid-idl-interface-declared-in-the-frontend-actor-factory-exactly-matches-all-current-backend-method-signatures-in-backend-main-mo-addbill-editbill-deletebill-getallbills-searchbills-getpartysummarybydaterange-getcompanyreport-getprofitlosssummary-savepartygstnumber-getpartygstnumber-getuniquepartynames-getuniqueproductnames-fix-any-method-signature-mismatch-stale-import-or-race-condition-that-causes-the-actor-to-be-undefined-or-fail-to-connect-so-that-bills-created-on-one-device-are-visible-on-all-other-devices-via-the-shared-stable-canister-storage",
-      "featureTitle": "Audit and fix the backend canister actor initialization in `frontend/src/hooks/useActor.ts` to ensure the ICP backend canister actor is created using the anonymous identity, instantiated once, cached, and reused across all sessions. Verify that the Candid/IDL interface declared in the frontend actor factory exactly matches all current backend method signatures in `backend/main.mo` (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames). Fix any method signature mismatch, stale import, or race condition that causes the actor to be undefined or fail to connect, so that bills created on one device are visible on all other devices via the shared stable canister storage.",
+      "featureId": "feature-add-party-buyer-input-fields-to-the-addbillform-and-editbillmodal-components-party-gst-number-text-input-auto-filled-from-the-selected-party-s-stored-gst-if-available-and-party-address-text-input-or-textarea-auto-filled-from-the-selected-party-s-stored-address-if-available-these-fields-should-appear-in-a-clearly-labeled-bill-to-party-details-section-without-disrupting-the-version-24-layout-of-other-fields",
+      "featureTitle": "Add party/buyer input fields to the AddBillForm and EditBillModal components: Party GST Number (text input, auto-filled from the selected party's stored GST if available) and Party Address (text input or textarea, auto-filled from the selected party's stored address if available). These fields should appear in a clearly labeled 'Bill To / Party Details' section without disrupting the Version 24 layout of other fields.",
       "files": [
-        "frontend/src/pages/AddBillPage.tsx",
-        "frontend/src/pages/CompanyReportPage.tsx",
-        "frontend/src/pages/PartySummaryPage.tsx",
-        "frontend/src/pages/SearchBillsPage.tsx",
-        "frontend/src/pages/SummaryPage.tsx"
+        "frontend/src/components/AddBillForm.tsx",
+        "frontend/src/components/EditBillModal.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -42,7 +37,45 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-94"
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-display-the-party-buyer-s-name-gst-number-and-address-in-the-invoiceprintview-component-these-should-appear-in-a-bill-to-section-on-the-invoice-formatted-clearly-alongside-the-existing-company-seller-details-the-gst-number-must-be-labeled-e-g-gst-no-and-the-address-shown-below-the-party-name-this-section-must-be-visible-both-on-screen-and-when-printing",
+      "featureTitle": "Display the party/buyer's name, GST number, and address in the InvoicePrintView component. These should appear in a 'Bill To' section on the invoice, formatted clearly alongside the existing company/seller details. The GST number must be labeled (e.g., 'GST No:') and the address shown below the party name. This section must be visible both on screen and when printing.",
+      "files": [
+        "frontend/src/components/InvoicePrintView.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-display-the-party-buyer-s-gst-number-in-the-invoice-summary-views-on-the-summarypage-bills-table-and-in-the-searchbillspage-results-table-add-a-visible-column-or-inline-detail-showing-the-party-gst-number-for-each-bill-also-ensure-the-partysummarypage-shows-the-party-gst-number-alongside-party-name",
+      "featureTitle": "Display the party/buyer's GST number in the invoice summary views: on the SummaryPage bills table and in the SearchBillsPage results table, add a visible column or inline detail showing the party GST number for each bill. Also ensure the PartySummaryPage shows the party GST number alongside party name.",
+      "files": [
+        "frontend/src/components/BillResultsTable.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
       ],
       "confidence": "high"
     }

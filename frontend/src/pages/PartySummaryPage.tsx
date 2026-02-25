@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Loader2, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
-import { useGetPartySummaryByDateRange, useSavePartyGstNumber } from '../hooks/useQueries';
-import { useActor } from '../hooks/useActor';
-import { useNavigate } from '@tanstack/react-router';
-import { formatINR } from '../utils/formatCurrency';
+import { useGetPartySummaryByDateRange, useSavePartyGstNumber, useSavePartyAddress } from '../hooks/useQueries';
+import SummaryCard from '../components/SummaryCard';
+import AddPartyModal from '../components/AddPartyModal';
 
-function dateToNano(date: string): bigint {
-  return BigInt(new Date(date).getTime()) * 1_000_000n;
+function formatCurrency(amount: number): string {
+  return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getDefaultDateRange() {
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth(), 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const from = new Date(now.getFullYear(), 0, 1);
+  const to = new Date(now.getFullYear(), 11, 31);
   return {
     from: from.toISOString().split('T')[0],
     to: to.toISOString().split('T')[0],
@@ -23,210 +21,208 @@ export default function PartySummaryPage() {
   const defaults = getDefaultDateRange();
   const [fromDate, setFromDate] = useState(defaults.from);
   const [toDate, setToDate] = useState(defaults.to);
-  const [editingGst, setEditingGst] = useState<string | null>(null);
-  const [gstValue, setGstValue] = useState('');
+  const [showAddParty, setShowAddParty] = useState(false);
+  const [editingGst, setEditingGst] = useState<{ [key: string]: string }>({});
+  const [editingAddress, setEditingAddress] = useState<{ [key: string]: string }>({});
+  const [savingGst, setSavingGst] = useState<string | null>(null);
+  const [savingAddress, setSavingAddress] = useState<string | null>(null);
 
-  const navigate = useNavigate();
-  const { actor, isFetching: actorFetching } = useActor();
-  const {
-    data: summaries = [],
-    isLoading,
-    isError: summaryError,
-  } = useGetPartySummaryByDateRange(dateToNano(fromDate), dateToNano(toDate));
-  const saveGst = useSavePartyGstNumber();
+  const fromMs = new Date(fromDate).getTime();
+  const toMs = new Date(toDate).getTime() + 86400000 - 1;
+  const fromNs = fromMs * 1_000_000;
+  const toNs = toMs * 1_000_000;
 
-  const isConnecting = actorFetching && !actor;
-  const hasError = (!actorFetching && !actor) || summaryError;
+  const { data: partySummaries = [], isLoading, refetch } = useGetPartySummaryByDateRange(fromNs, toNs);
+  const saveGstMutation = useSavePartyGstNumber();
+  const saveAddressMutation = useSavePartyAddress();
 
-  const totals = summaries.reduce(
-    (acc, s) => ({
-      billed: acc.billed + s.totalBilled,
-      paid: acc.paid + s.totalPaid,
-      pending: acc.pending + s.totalPending,
-    }),
-    { billed: 0, paid: 0, pending: 0 }
-  );
+  const totalBilled = partySummaries.reduce((s, p) => s + p.totalBilled, 0);
+  const totalPaid = partySummaries.reduce((s, p) => s + p.totalPaid, 0);
+  const totalPending = partySummaries.reduce((s, p) => s + p.totalPending, 0);
 
   const handleSaveGst = async (partyName: string) => {
-    await saveGst.mutateAsync({ partyName, gstNumber: gstValue });
-    setEditingGst(null);
-    setGstValue('');
+    const gst = editingGst[partyName] ?? '';
+    setSavingGst(partyName);
+    try {
+      await saveGstMutation.mutateAsync({ partyName, gstNumber: gst });
+      setEditingGst(prev => { const n = { ...prev }; delete n[partyName]; return n; });
+      refetch();
+    } catch {
+      // ignore
+    } finally {
+      setSavingGst(null);
+    }
   };
 
-  if (isConnecting) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
-        <div className="flex items-center justify-center py-16">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm">Connecting to server…</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <AlertCircle className="h-10 w-10 text-destructive" />
-          <p className="text-base font-semibold text-foreground">
-            Unable to connect to server. Please refresh and try again.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const handleSaveAddress = async (partyName: string) => {
+    const address = editingAddress[partyName] ?? '';
+    setSavingAddress(partyName);
+    try {
+      await saveAddressMutation.mutateAsync({ partyName, address });
+      setEditingAddress(prev => { const n = { ...prev }; delete n[partyName]; return n; });
+      refetch();
+    } catch {
+      // ignore
+    } finally {
+      setSavingAddress(null);
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Party Summary</h1>
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Party Summary</h1>
+          <p className="text-gray-600 text-sm mt-1">Overview of all parties and their billing</p>
+        </div>
+        <button
+          onClick={() => setShowAddParty(true)}
+          className="px-4 py-2 bg-brand-red hover:bg-red-700 text-white font-semibold text-sm rounded transition-colors"
+        >
+          + Add Party
+        </button>
+      </div>
 
-      {/* Date range filter */}
-      <div className="no-print flex flex-wrap gap-4 mb-6 p-4 bg-card rounded-lg border border-border">
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">From:</label>
+          <label className="text-sm font-medium text-gray-700">From:</label>
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-brand-red"
           />
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">To:</label>
+          <label className="text-sm font-medium text-gray-700">To:</label>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="border border-border rounded px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="border border-gray-300 rounded px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-brand-red"
           />
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          {/* Aggregate totals */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Billed</p>
-              <p className="text-lg font-bold text-foreground">{formatINR(totals.billed)}</p>
-            </div>
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Paid</p>
-              <p className="text-lg font-bold text-green-600">{formatINR(totals.paid)}</p>
-            </div>
-            <div className="p-4 bg-card rounded-lg border border-border text-center">
-              <p className="text-xs text-muted-foreground mb-1">Total Pending</p>
-              <p className="text-lg font-bold text-destructive">{formatINR(totals.pending)}</p>
-            </div>
-          </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <SummaryCard label="Total Billed" value={formatCurrency(totalBilled)} highlight />
+        <SummaryCard label="Total Paid" value={formatCurrency(totalPaid)} />
+        <SummaryCard label="Total Pending" value={formatCurrency(totalPending)} />
+      </div>
 
-          {summaries.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No bills found for the selected date range.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-primary text-primary-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">Party Name</th>
-                    <th className="px-4 py-3 text-left font-medium">GST Number</th>
-                    <th className="px-4 py-3 text-right font-medium">Bills</th>
-                    <th className="px-4 py-3 text-right font-medium">Total Billed</th>
-                    <th className="px-4 py-3 text-right font-medium">Total Paid</th>
-                    <th className="px-4 py-3 text-right font-medium">Pending</th>
-                    <th className="px-4 py-3 text-center font-medium no-print">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summaries.map((s, idx) => (
-                    <tr
-                      key={s.partyName}
-                      className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/30'}
-                    >
-                      <td className="px-4 py-3 font-medium text-foreground">{s.partyName}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {editingGst === s.partyName ? (
-                          <div className="flex items-center gap-2 no-print">
-                            <input
-                              type="text"
-                              value={gstValue}
-                              onChange={(e) => setGstValue(e.target.value)}
-                              placeholder="Enter GST number"
-                              className="border border-border rounded px-2 py-1 text-xs bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring w-36"
-                            />
-                            <button
-                              onClick={() => handleSaveGst(s.partyName)}
-                              disabled={saveGst.isPending}
-                              className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 disabled:opacity-50"
-                            >
-                              {saveGst.isPending ? '…' : 'Save'}
-                            </button>
-                            <button
-                              onClick={() => setEditingGst(null)}
-                              className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs hover:bg-muted/80"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <span
-                            className="cursor-pointer hover:text-primary no-print"
-                            onClick={() => {
-                              setEditingGst(s.partyName);
-                              setGstValue(s.gstNumber || '');
-                            }}
-                            title="Click to edit GST number"
+      {/* Party Table */}
+      {isLoading ? (
+        <div className="text-center py-8 text-gray-500">Loading party data...</div>
+      ) : partySummaries.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">No party data found for the selected date range.</div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg shadow">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-brand-red text-white">
+                <th className="px-4 py-3 text-left">Party Name</th>
+                <th className="px-4 py-3 text-left">GST Number</th>
+                <th className="px-4 py-3 text-left">Address</th>
+                <th className="px-4 py-3 text-right">Bills</th>
+                <th className="px-4 py-3 text-right">Total Billed</th>
+                <th className="px-4 py-3 text-right">Total Paid</th>
+                <th className="px-4 py-3 text-right">Pending</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {partySummaries.map((party) => {
+                const isEditingGst = partyName => editingGst.hasOwnProperty(partyName);
+                const isEditingAddr = partyName => editingAddress.hasOwnProperty(partyName);
+                const gstValue = editingGst.hasOwnProperty(party.partyName) ? editingGst[party.partyName] : party.gstNumber;
+                const addrValue = editingAddress.hasOwnProperty(party.partyName) ? editingAddress[party.partyName] : party.address;
+
+                return (
+                  <tr key={party.partyName} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{party.partyName}</td>
+                    <td className="px-4 py-3">
+                      {editingGst.hasOwnProperty(party.partyName) ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={gstValue}
+                            onChange={(e) => setEditingGst(prev => ({ ...prev, [party.partyName]: e.target.value }))}
+                            className="border border-gray-300 rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:border-brand-red w-36"
+                          />
+                          <button
+                            onClick={() => handleSaveGst(party.partyName)}
+                            disabled={savingGst === party.partyName}
+                            className="px-2 py-1 bg-brand-red text-white text-xs rounded hover:bg-red-700 disabled:opacity-60"
                           >
-                            {s.gstNumber || <span className="italic text-muted-foreground/60">Click to add</span>}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">
-                        {Number(s.billCount)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium text-foreground">
-                        {formatINR(s.totalBilled)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-green-600 font-medium">
-                        {formatINR(s.totalPaid)}
-                      </td>
-                      <td className="px-4 py-3 text-right text-destructive font-medium">
-                        {formatINR(s.totalPending)}
-                      </td>
-                      <td className="px-4 py-3 text-center no-print">
-                        <button
-                          onClick={() => navigate({ to: '/company-report' })}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded text-xs font-medium hover:bg-primary/20 transition-colors mx-auto"
+                            {savingGst === party.partyName ? '...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setEditingGst(prev => { const n = { ...prev }; delete n[party.partyName]; return n; })}
+                            className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          className="text-gray-700 cursor-pointer hover:text-brand-red"
+                          onClick={() => setEditingGst(prev => ({ ...prev, [party.partyName]: party.gstNumber }))}
+                          title="Click to edit"
                         >
-                          View Report
-                          <ChevronRight className="h-3 w-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+                          {party.gstNumber || <span className="text-gray-400 italic">Click to add</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editingAddress.hasOwnProperty(party.partyName) ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={addrValue}
+                            onChange={(e) => setEditingAddress(prev => ({ ...prev, [party.partyName]: e.target.value }))}
+                            className="border border-gray-300 rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:border-brand-red w-40"
+                          />
+                          <button
+                            onClick={() => handleSaveAddress(party.partyName)}
+                            disabled={savingAddress === party.partyName}
+                            className="px-2 py-1 bg-brand-red text-white text-xs rounded hover:bg-red-700 disabled:opacity-60"
+                          >
+                            {savingAddress === party.partyName ? '...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setEditingAddress(prev => { const n = { ...prev }; delete n[party.partyName]; return n; })}
+                            className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          className="text-gray-700 cursor-pointer hover:text-brand-red"
+                          onClick={() => setEditingAddress(prev => ({ ...prev, [party.partyName]: party.address }))}
+                          title="Click to edit"
+                        >
+                          {party.address || <span className="text-gray-400 italic">Click to add</span>}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">{String(party.billCount)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-900">{formatCurrency(party.totalBilled)}</td>
+                    <td className="px-4 py-3 text-right text-green-700">{formatCurrency(party.totalPaid)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${party.totalPending > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      {formatCurrency(party.totalPending)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <AddPartyModal open={showAddParty} onClose={() => setShowAddParty(false)} />
     </div>
   );
 }

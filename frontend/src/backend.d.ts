@@ -9,10 +9,12 @@ export interface None {
 export type Option<T> = Some<T> | None;
 export interface BillOperation {
     lineItems: Array<LineItem>;
+    siteAddress: string;
     amountPaid: number;
     billDate: bigint;
     invoiceNumber: string;
     partyName: string;
+    partyGstNo?: string;
 }
 export interface LineItem {
     rate: number;
@@ -34,6 +36,7 @@ export interface Bill {
     finalAmount: number;
     cgst: number;
     sgst: number;
+    siteAddress: string;
     totalGst: number;
     amountPaid: number;
     billDate: bigint;
@@ -42,6 +45,15 @@ export interface Bill {
     partyName: string;
     pendingAmount: number;
     roundOff: number;
+    partyGstNo?: string;
+}
+export interface CompanySettings {
+    ifscCode: string;
+    bankName: string;
+    gstin: string;
+    panNumber: string;
+    accountNumber: string;
+    companyAddress: string;
 }
 export interface CompanyReport {
     totalReceived: number;
@@ -52,6 +64,7 @@ export interface CompanyReport {
 export interface PartySummary {
     gstNumber: string;
     totalPaid: number;
+    address: string;
     totalBilled: number;
     partyName: string;
     billCount: bigint;
@@ -59,6 +72,10 @@ export interface PartySummary {
 }
 export interface UserProfile {
     name: string;
+}
+export interface PartyProfile {
+    gstNumber: string;
+    address: string;
 }
 export enum UserRole {
     admin = "admin",
@@ -81,7 +98,8 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCompanyReport(partyName: string, from: bigint, to: bigint): Promise<CompanyReport>;
-    getPartyGstNumber(partyName: string): Promise<string>;
+    getCompanySettings(): Promise<CompanySettings | null>;
+    getPartyProfile(partyName: string): Promise<PartyProfile>;
     getPartySummary(): Promise<Array<PartySummary>>;
     getPartySummaryByDateRange(from: bigint, to: bigint): Promise<Array<PartySummary>>;
     getProfitLossSummary(from: bigint, to: bigint): Promise<ProfitLossSummary>;
@@ -90,5 +108,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    saveCompanySettings(settings: CompanySettings): Promise<void>;
+    savePartyAddress(partyName: string, address: string): Promise<void>;
     savePartyGstNumber(partyName: string, gstNumber: string): Promise<void>;
 }

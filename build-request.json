@@ -1,88 +1,121 @@
 {
   "kind": "build_request",
-  "title": "Fix print layout (hide nav header) and ensure cross-device bill sync",
+  "title": "Add Party/Buyer GST & Address to Version 24 UI with Invoice Display",
   "projectName": "Manish Infratech",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-93",
-      "text": "Add CSS `@media print` rules to the global stylesheet (frontend/src/index.css) that hide the navigation header (the sticky nav bar containing the MI logo, MANISH INFRATECH text, navigation links, and logout button) and all other screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls) during printing. Only the invoice content rendered by InvoicePrintView must appear on the printed page: the company header with MI logo, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. No website chrome must appear on any printed page.",
+      "id": "REQ-1",
+      "text": "Restore the full Version 24 UI exactly as it was, including the company logo, layout, color scheme, navigation, and all existing components (summary cards, bill table, add bill form, search, party summary, company report, settings, invoice print view). Do not alter any existing Version 24 design or functionality.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent-5",
-          "msg-recent-7",
-          "msg-recent-9"
+          "msg-4",
+          "msg-5",
+          "msg-6"
         ],
         "quotes": [
-          "WHY HEADER IS PRINTED WITH THE INVOICE IT IS NOT PROFESSION IN PRINTING ONLY COMPANY NAME LOGO AND OTHER COMPANY NAME AND GST AND THEN AMOUNT NOT THE HEADER",
-          "when printed only name of MANISHINFRATECH and it's logo and buyer companies name and their gst and then amount+cgst+sgst",
-          "hide the navigation header (navy bar with MI logo, MANISH INFRATECH text, nav links, logout button) and all screen-only UI elements"
+          "Please copy whole UI of version 24",
+          "whole UI of version 24 and logo also"
         ]
       },
       "acceptanceCriteria": [
-        "When window.print() is triggered from the InvoicePrintPage, the navigation header bar (navy background, MI logo, nav links, logout button) does NOT appear on the printed output.",
-        "The printed invoice shows only: MI logo, MANISH INFRATECH company name, buyer's party name, party GST number (if available), invoice number, bill date, line items table, and GST summary (Base Amount, CGST, SGST, Round-off, Final Amount, amount in words).",
-        "Action buttons (Print, Back, Edit, Delete) and filter controls do not appear on the printed page.",
-        "The `@media print` CSS rules apply globally so that any page that triggers print hides the nav header.",
-        "The invoice content prints cleanly without extra whitespace or broken layout caused by hidden elements."
+        "All Version 24 pages render identically to Version 24 (summary, add-bill, search, parties, company-report, settings, invoice print)",
+        "Company logo appears in the header/invoice exactly as in Version 24",
+        "No existing Version 24 UI elements are removed or repositioned"
       ]
     },
     {
-      "id": "REQ-94",
-      "text": "Audit and fix the backend canister actor initialization in `frontend/src/hooks/useActor.ts` to ensure the ICP backend canister actor is created using the anonymous identity, instantiated once, cached, and reused across all sessions. Verify that the Candid/IDL interface declared in the frontend actor factory exactly matches all current backend method signatures in `backend/main.mo` (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames). Fix any method signature mismatch, stale import, or race condition that causes the actor to be undefined or fail to connect, so that bills created on one device are visible on all other devices via the shared stable canister storage.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-recent-7",
-          "msg-recent-9"
-        ],
-        "quotes": [
-          "Yes I want that only that the bill have to sync in all device",
-          "Bill sync across all devices — ensure bills stored in the canister's stable storage are accessible from any device (fixing any actor connection or caching issues that cause different devices to see different data)."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Bills added on Device A appear when the app is loaded on Device B without requiring any manual refresh or cache clearing.",
-        "The actor is created with anonymous identity (no Internet Identity dependency).",
-        "The actor instance is cached and reused — not recreated on every render or hook call.",
-        "All backend method calls (getAllBills, addBill, editBill, deleteBill, searchBills, and report methods) resolve without 'actor not available' errors.",
-        "The IDL/Candid interface declared in the frontend exactly matches the backend method signatures (argument types, return types, variant labels).",
-        "While the actor is initializing, a loading spinner is shown on data-dependent pages. If initialization fails, the message 'Unable to connect to server. Please refresh and try again.' is displayed."
-      ]
-    },
-    {
-      "id": "REQ-95",
-      "text": "Confirm that the backend `backend/main.mo` actor uses stable variables for the bills map and partyProfiles map, and that `preupgrade` and `postupgrade` system hooks correctly serialize and deserialize all stable state. Bills must be globally accessible from any device via the shared canister stable storage and must survive every canister upgrade and redeployment without data loss.",
+      "id": "REQ-2",
+      "text": "Add a party/buyer section to the backend Bill data model with three new fields: partyGstNumber (Text), partyAddress (Text). The party name is already stored; ensure partyGstNumber and partyAddress are persisted on each bill record. Update addBill and editBill backend functions to accept and store these fields. Ensure backward compatibility with existing bill records (default to empty strings if missing).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent-7"
+          "msg-5",
+          "msg-6",
+          "msg-7"
         ],
         "quotes": [
-          "the bill have to sync in all device",
-          "Bills stored in the canister's stable storage are correctly fetched and accessible from any device"
+          "I want to add gst number of party whom I sell and their address where they situated",
+          "The gst number and address should show in the invoice when print and gst number also show in invoice and summary and print"
         ]
       },
       "acceptanceCriteria": [
-        "All bill data and party profiles are stored in stable variables in main.mo.",
-        "preupgrade and postupgrade hooks are present and correctly serialize/deserialize the bills map and partyProfiles map.",
-        "After a canister upgrade, all previously saved bills remain accessible via getAllBills.",
-        "Bills are stored in a single global map (not per-principal), so any authenticated frontend session can read all bills regardless of which device created them."
+        "Bill records include partyGstNumber and partyAddress fields",
+        "addBill and editBill accept partyGstNumber and partyAddress parameters",
+        "Existing bill records without these fields default to empty strings and do not cause errors"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add party/buyer input fields to the AddBillForm and EditBillModal components: Party GST Number (text input, auto-filled from the selected party's stored GST if available) and Party Address (text input or textarea, auto-filled from the selected party's stored address if available). These fields should appear in a clearly labeled 'Bill To / Party Details' section without disrupting the Version 24 layout of other fields.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5",
+          "msg-6"
+        ],
+        "quotes": [
+          "Party/buyer's GST number",
+          "Party/buyer's address"
+        ]
+      },
+      "acceptanceCriteria": [
+        "AddBillForm displays Party GST Number and Party Address input fields",
+        "EditBillModal displays Party GST Number and Party Address input fields pre-populated with saved values",
+        "When a party is selected via autocomplete, partyGstNumber and partyAddress auto-fill from the party's stored profile",
+        "Fields are editable and their values are submitted with the bill"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Display the party/buyer's name, GST number, and address in the InvoicePrintView component. These should appear in a 'Bill To' section on the invoice, formatted clearly alongside the existing company/seller details. The GST number must be labeled (e.g., 'GST No:') and the address shown below the party name. This section must be visible both on screen and when printing.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-7"
+        ],
+        "quotes": [
+          "The gst number and address should show in the invoice when print and gst number also show in invoice and summary and print"
+        ]
+      },
+      "acceptanceCriteria": [
+        "InvoicePrintView shows a 'Bill To' section with party name, GST number (labeled 'GST No:'), and address",
+        "The 'Bill To' section is visible on the invoice screen view",
+        "The 'Bill To' section is visible and correctly formatted when the invoice is printed or saved as PDF",
+        "If partyGstNumber or partyAddress is empty, the section gracefully omits or hides those sub-fields"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Display the party/buyer's GST number in the invoice summary views: on the SummaryPage bills table and in the SearchBillsPage results table, add a visible column or inline detail showing the party GST number for each bill. Also ensure the PartySummaryPage shows the party GST number alongside party name.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-7"
+        ],
+        "quotes": [
+          "gst number also show in invoice and summary and print"
+        ]
+      },
+      "acceptanceCriteria": [
+        "SummaryPage bills table includes party GST number visible per bill row",
+        "SearchBillsPage results table shows party GST number per bill row",
+        "PartySummaryPage displays party GST number next to each party name"
       ]
     }
   ],
   "constraints": [
-    "Do not change any structural content of InvoicePrintView (line item columns, GST summary rows, company header, footer).",
-    "Do not modify files listed in frontend.immutablePaths.",
-    "The hardcoded credentials (MANISHINFRATECH / 1752) and localStorage session logic must remain unchanged.",
-    "No new backend methods should be added — only verify and fix existing ones."
+    "Do not alter the Version 24 UI layout, color scheme, logo placement, or any existing component design",
+    "All immutable frontend paths (hooks, main.tsx, ui components) must not be modified",
+    "Backend must remain a single Motoko actor",
+    "New bill fields (partyGstNumber, partyAddress) must be backward compatible with existing stored bills"
   ],
   "nonGoals": [
-    "Redesigning the invoice print layout or changing the red-and-white color theme.",
-    "Adding new invoice fields or columns.",
-    "Changing the authentication mechanism.",
-    "Modifying navigation link structure or adding new pages."
+    "Adding new pages or navigation routes beyond Version 24",
+    "Changing company/seller details fields or layout",
+    "Implementing a separate party database beyond what already exists",
+    "Any redesign or theme change to the existing Version 24 UI"
   ],
   "imageRequirements": {
     "required": [],

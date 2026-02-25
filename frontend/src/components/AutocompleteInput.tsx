@@ -1,84 +1,71 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface AutocompleteInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface AutocompleteInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSelect: (value: string) => void;
   suggestions: string[];
-  onValueChange?: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
 }
 
 export default function AutocompleteInput({
-  suggestions,
-  onValueChange,
   value,
   onChange,
-  ...props
+  onSelect,
+  suggestions,
+  placeholder,
+  className,
+  disabled,
 }: AutocompleteInputProps) {
   const [open, setOpen] = useState(false);
   const [filtered, setFiltered] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const currentValue = (value as string) ?? '';
-
   useEffect(() => {
-    if (currentValue.trim().length === 0) {
-      setFiltered(suggestions.slice(0, 10));
+    if (value.trim()) {
+      const lower = value.toLowerCase();
+      setFiltered(suggestions.filter(s => s.toLowerCase().includes(lower)).slice(0, 10));
     } else {
-      const lower = currentValue.toLowerCase();
-      setFiltered(
-        suggestions.filter(s => s.toLowerCase().includes(lower)).slice(0, 10)
-      );
+      setFiltered(suggestions.slice(0, 10));
     }
-  }, [currentValue, suggestions]);
+  }, [value, suggestions]);
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
-    }
+    };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange?.(e);
-    onValueChange?.(e.target.value);
-    setOpen(true);
-  };
-
-  const handleSelect = (suggestion: string) => {
-    onValueChange?.(suggestion);
-    // Simulate a change event
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      'value'
-    )?.set;
-    if (containerRef.current) {
-      const input = containerRef.current.querySelector('input');
-      if (input && nativeInputValueSetter) {
-        nativeInputValueSetter.call(input, suggestion);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }
-    setOpen(false);
-  };
-
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative">
       <input
-        {...props}
+        type="text"
         value={value}
-        onChange={handleInputChange}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        className={className}
+        disabled={disabled}
         autoComplete="off"
-        className={`w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition ${props.className ?? ''}`}
       />
       {open && filtered.length > 0 && (
-        <ul className="absolute z-50 w-full bg-card border border-border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-          {filtered.map((s, i) => (
+        <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded shadow-lg mt-1 max-h-48 overflow-y-auto">
+          {filtered.map((s) => (
             <li
-              key={i}
-              onMouseDown={() => handleSelect(s)}
-              className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
+              key={s}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect(s);
+                onChange(s);
+                setOpen(false);
+              }}
+              className="px-3 py-2 text-sm text-gray-800 hover:bg-red-50 hover:text-brand-red cursor-pointer"
             >
               {s}
             </li>

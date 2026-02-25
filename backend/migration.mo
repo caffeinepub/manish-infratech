@@ -1,11 +1,6 @@
 import Map "mo:core/Map";
-import Text "mo:core/Text";
-import Principal "mo:core/Principal";
 
 module {
-  // Types from the original actor.
-  type UserProfile = { name : Text };
-  type PartyProfile = { gstNumber : Text };
   type LineItem = {
     srNo : Nat;
     hsnCode : Text;
@@ -15,8 +10,19 @@ module {
     rate : Float;
     totalAmount : Float;
   };
-  type Bill = {
+
+  type CompanySettings = {
+    companyAddress : Text;
+    accountNumber : Text;
+    panNumber : Text;
+    gstin : Text;
+    ifscCode : Text;
+    bankName : Text;
+  };
+
+  type OldBill = {
     partyName : Text;
+    partyGstNo : ?Text;
     invoiceNumber : Text;
     baseAmount : Float;
     cgst : Float;
@@ -28,19 +34,47 @@ module {
     pendingAmount : Float;
     billDate : Int;
     lineItems : [LineItem];
+    siteAddress : Text;
   };
 
-  // Actor state before migration.
+  type PartyProfile = {
+    gstNumber : Text;
+    address : Text;
+  };
+
   type OldActor = {
-    MAX_LINE_ITEMS : Nat;
-    userProfiles : Map.Map<Principal, UserProfile>;
-    partyGstNumbers : Map.Map<Text, PartyProfile>;
-    bills : Map.Map<Text, Bill>;
+    companySettings : ?CompanySettings;
+    bills : Map.Map<Text, OldBill>;
+    partyProfiles : Map.Map<Text, PartyProfile>;
   };
 
-  // Actor state after migration.
-  type NewActor = OldActor;
+  type NewBill = {
+    partyName : Text;
+    partyGstNo : ?Text;
+    invoiceNumber : Text;
+    baseAmount : Float;
+    cgst : Float;
+    sgst : Float;
+    totalGst : Float;
+    roundOff : Float;
+    finalAmount : Float;
+    amountPaid : Float;
+    pendingAmount : Float;
+    billDate : Int;
+    lineItems : [LineItem];
+    siteAddress : Text;
+  };
 
-  // Migration function called by the main actor via the with-clause.
-  public func run(old : OldActor) : NewActor { old };
+  type NewActor = {
+    companySettings : ?CompanySettings;
+    bills : Map.Map<Text, NewBill>;
+    partyProfiles : Map.Map<Text, PartyProfile>;
+  };
+
+  public func run(old : OldActor) : NewActor {
+    let newBills = old.bills.map<Text, OldBill, NewBill>(
+      func(_id, oldBill) { oldBill }
+    );
+    { old with bills = newBills };
+  };
 };

@@ -1,87 +1,101 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix print layout (hide nav header) and ensure cross-device bill sync",
+  "title": "Add Party/Buyer GST & Address to Version 24 UI with Invoice Display",
   "requirements": [
     {
-      "id": "REQ-93",
-      "summary": "Add @media print CSS rules to hide navigation header and screen-only UI elements during printing, ensuring only invoice content appears on printed pages",
+      "id": "REQ-1",
+      "summary": "Restore the full Version 24 UI exactly as it was, including the company logo, layout, color scheme, navigation, and all existing components without altering any existing design or functionality",
       "acceptanceCriteria": [
-        "When window.print() is triggered from the InvoicePrintPage, the navigation header bar (navy background, MI logo, nav links, logout button) does NOT appear on the printed output.",
-        "The printed invoice shows only: MI logo, MANISH INFRATECH company name, buyer's party name, party GST number (if available), invoice number, bill date, line items table, and GST summary (Base Amount, CGST, SGST, Round-off, Final Amount, amount in words).",
-        "Action buttons (Print, Back, Edit, Delete) and filter controls do not appear on the printed page.",
-        "The @media print CSS rules apply globally so that any page that triggers print hides the nav header.",
-        "The invoice content prints cleanly without extra whitespace or broken layout caused by hidden elements."
+        "All Version 24 pages render identically to Version 24 (summary, add-bill, search, parties, company-report, settings, invoice print)",
+        "Company logo appears in the header/invoice exactly as in Version 24",
+        "No existing Version 24 UI elements are removed or repositioned"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/index.css",
-          "operation": "modify",
-          "description": "Add @media print rules to hide the navigation header (identified by Layout component's header with sticky positioning, navy background, MI logo, MANISH INFRATECH text, nav links, and logout button) and all screen-only UI elements (page action buttons, sidebars, breadcrumbs, filter controls). Ensure only invoice content rendered by InvoicePrintView is visible: company header with MI logo from frontend/public/assets/generated/mi-logo.dim_128x128.png, MANISH INFRATECH name, party name, party GST number, invoice number, bill date, line items table, and GST summary section. Use display:none for .no-print class and header elements, and add page-break rules to prevent content splitting."
-        },
-        {
           "path": "frontend/src/components/Layout.tsx",
           "operation": "modify",
-          "description": "Add the 'no-print' CSS class to the sticky header element containing the MI logo, MANISH INFRATECH branding, navigation links (Add Bill, Search Bills, Summary, Party Summary, Company Report), and logout button so it is hidden during print via the @media print rules in index.css."
-        },
-        {
-          "path": "frontend/src/pages/InvoicePrintPage.tsx",
-          "operation": "modify",
-          "description": "Add the 'no-print' CSS class to the action button container (Print and Back buttons) so these controls are hidden during print via the @media print rules in index.css."
+          "description": "Verify and restore the company logo in the header using the generated asset at frontend/public/assets/generated/manish-infratech-logo.dim_320x80.png. Ensure the logo placement, size, and styling match Version 24 exactly. The header should maintain its red background and navigation links without any layout changes."
         },
         {
           "path": "frontend/src/components/InvoicePrintView.tsx",
           "operation": "modify",
-          "description": "Review and ensure the component structure is print-optimized: verify the MI logo references the correct workspace path frontend/public/assets/generated/mi-logo.dim_128x128.png, ensure all invoice content (company header, party details, invoice number, bill date, line items table, GST summary with Base Amount/CGST/SGST/Round-off/Final Amount/amount in words) uses print-safe styling with no flex/grid layout that could break across pages. Do not change the content structure or add new fields."
+          "description": "Verify and restore the company logo in the invoice print view using the generated asset at frontend/public/assets/generated/manish-infratech-logo.dim_320x80.png or frontend/public/assets/generated/mi-logo.dim_128x128.png. Ensure the logo appears in the invoice header exactly as in Version 24 and is visible both on screen and when printing."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Verify that all Version 24 color scheme variables, theme definitions, and print styles remain intact. Ensure no CSS changes have altered the visual appearance of existing components. Maintain the OKLCH-based color system and print-specific styles that hide UI chrome during invoice printing."
+        },
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Verify that all Version 24 Tailwind configuration including custom colors (navy/brand palettes), fonts (Inter, Poppins), border radius tokens, and shadow utilities remain unchanged. Ensure no theme modifications have been introduced that would affect the existing UI appearance."
         }
       ]
     },
     {
-      "id": "REQ-94",
-      "summary": "Audit and fix backend canister actor initialization in useActor.ts to ensure anonymous identity actor is created once, cached, reused across sessions, and matches all backend method signatures, fixing cross-device bill sync issues",
+      "id": "REQ-3",
+      "summary": "Add party/buyer input fields (GST Number and Address) to AddBillForm and EditBillModal with auto-fill from party profile, displayed in a clearly labeled 'Bill To / Party Details' section",
       "acceptanceCriteria": [
-        "Bills added on Device A appear when the app is loaded on Device B without requiring any manual refresh or cache clearing.",
-        "The actor is created with anonymous identity (no Internet Identity dependency).",
-        "The actor instance is cached and reused — not recreated on every render or hook call.",
-        "All backend method calls (getAllBills, addBill, editBill, deleteBill, searchBills, and report methods) resolve without 'actor not available' errors.",
-        "The IDL/Candid interface declared in the frontend exactly matches the backend method signatures (argument types, return types, variant labels).",
-        "While the actor is initializing, a loading spinner is shown on data-dependent pages. If initialization fails, the message 'Unable to connect to server. Please refresh and try again.' is displayed."
+        "AddBillForm displays Party GST Number and Party Address input fields",
+        "EditBillModal displays Party GST Number and Party Address input fields pre-populated with saved values",
+        "When a party is selected via autocomplete, partyGstNumber and partyAddress auto-fill from the party's stored profile",
+        "Fields are editable and their values are submitted with the bill"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useActor.ts",
+          "path": "frontend/src/components/AddBillForm.tsx",
           "operation": "modify",
-          "description": "Audit the actor initialization logic to ensure: (1) the actor is created using anonymous identity (not requiring Internet Identity login), (2) the actor instance is created once and cached in React Query state (not recreated on every render or hook invocation), (3) the Candid/IDL interface declaration exactly matches all current backend method signatures from backend/main.mo (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames, plus any authorization methods like getCallerUserProfile, saveCallerUserProfile, getUserProfile, getCallerUserRole, assignCallerUserRole, isCallerAdmin from the authorization component), (4) fix any race conditions or stale import paths that cause the actor to be undefined or fail to connect. The actor must connect to the shared stable canister storage so bills created on one device are visible on all other devices. Verify that dependent queries are invalidated correctly when the actor changes."
+          "description": "Add a 'Bill To / Party Details' section with two new input fields: Party GST Number (text input) and Party Address (textarea). Position this section logically near the party name autocomplete field without disrupting the Version 24 layout. Implement auto-fill logic: when a party is selected via the existing autocomplete, fetch the party profile using the getPartyProfile backend capability and populate partyGstNumber and partyAddress fields from the returned PartyProfile.gstNumber and PartyProfile.address. Allow manual editing of these fields. Update the form submission to include partyGstNumber and partyAddress in the BillOperation data sent to the addBill backend capability. Ensure the form state and validation accommodate these new optional fields."
+        },
+        {
+          "path": "frontend/src/components/EditBillModal.tsx",
+          "operation": "modify",
+          "description": "Add a 'Bill To / Party Details' section with two new input fields: Party GST Number (text input) and Party Address (textarea). Pre-populate these fields with the existing bill's partyGstNo (mapped from backend Bill.partyGstNo optional field) and a corresponding address field when the modal opens. Implement auto-fill logic: if the user changes the party name via autocomplete, fetch the new party's profile using getPartyProfile and update the GST and address fields accordingly. Allow manual editing. Update the form submission to include the edited partyGstNumber and partyAddress in the updatedBillOp sent to the editBill backend capability. Handle backward compatibility: if partyGstNo is undefined on the bill, default to an empty string."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Review all query hooks (useGetAllBills, useGetBill, useSearchBills, useGetPartySummary, useGetCompanyReport, useGetProfitLossSummary, useGetPartyGstNumber, useGetUniquePartyNames, useGetUniqueProductNames) to ensure they correctly handle the actor loading state from useActor. Each query should be disabled (enabled: !!actor) until the actor is available, and should display appropriate loading or error states when the actor is undefined or initialization fails. Ensure mutation hooks (useAddBill, useEditBill, useDeleteBill, useSavePartyGstNumber) also guard against undefined actor and show 'Unable to connect to server' errors when actor initialization fails."
-        },
+          "description": "Add a React Query hook useGetPartyProfile(partyName: string) that calls actor.getPartyProfile(partyName) to fetch the PartyProfile containing gstNumber and address. Use this hook in AddBillForm and EditBillModal to auto-fill party GST and address fields when a party is selected. Ensure the query is enabled only when a valid partyName is provided and the actor is available."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Display the party/buyer's name, GST number, and address in the InvoicePrintView component in a 'Bill To' section, visible on screen and when printing",
+      "acceptanceCriteria": [
+        "InvoicePrintView shows a 'Bill To' section with party name, GST number (labeled 'GST No:'), and address",
+        "The 'Bill To' section is visible on the invoice screen view",
+        "The 'Bill To' section is visible and correctly formatted when the invoice is printed or saved as PDF",
+        "If partyGstNumber or partyAddress is empty, the section gracefully omits or hides those sub-fields"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/pages/AddBillPage.tsx",
+          "path": "frontend/src/components/InvoicePrintView.tsx",
           "operation": "modify",
-          "description": "Ensure the page displays a loading spinner while the actor is initializing (check useActor isFetching state). If actor initialization fails, display the error message 'Unable to connect to server. Please refresh and try again.' prominently above the form. Do not allow form submission when the actor is unavailable."
-        },
+          "description": "Add a 'Bill To' section that displays the party/buyer details: party name (from bill.partyName), GST number (from bill.partyGstNo with label 'GST No:'), and address (from a new partyAddress field that should be added to the Bill type rendering). Position this section prominently near the top of the invoice, typically opposite or below the company/seller details section. Use conditional rendering: if bill.partyGstNo is undefined or empty, omit the GST No line; similarly handle the address field. Ensure the section styling is consistent with Version 24 invoice formatting and that it renders correctly both on screen and in print/PDF mode. Verify that the print-specific CSS from index.css applies to this section."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Display the party/buyer's GST number in SummaryPage bills table, SearchBillsPage results table, and PartySummaryPage",
+      "acceptanceCriteria": [
+        "SummaryPage bills table includes party GST number visible per bill row",
+        "SearchBillsPage results table shows party GST number per bill row",
+        "PartySummaryPage displays party GST number next to each party name"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/pages/SearchBillsPage.tsx",
+          "path": "frontend/src/components/BillResultsTable.tsx",
           "operation": "modify",
-          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching bills. If actor initialization or the getAllBills query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the search form and results table."
-        },
-        {
-          "path": "frontend/src/pages/SummaryPage.tsx",
-          "operation": "modify",
-          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching summary data. If actor initialization or any summary query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the summary cards and CSV export controls."
+          "description": "Add a new column 'Party GST' to the bills table that displays bill.partyGstNo for each bill row. Position this column logically near the party name column. Use conditional rendering to display the GST number if present, or show a placeholder (e.g., '—' or 'N/A') if bill.partyGstNo is undefined or empty. Ensure the column width and styling fit within the existing Version 24 table layout without breaking responsive behavior. This component is used by both SummaryPage and SearchBillsPage, so this change will cover both requirements."
         },
         {
           "path": "frontend/src/pages/PartySummaryPage.tsx",
           "operation": "modify",
-          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching party summaries. If actor initialization or the getPartySummaryByDateRange query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the date filters and party summary table."
-        },
-        {
-          "path": "frontend/src/pages/CompanyReportPage.tsx",
-          "operation": "modify",
-          "description": "Ensure the page displays a loading spinner while the actor is initializing and fetching company report data. If actor initialization or the getCompanyReport query fails, display the error message 'Unable to connect to server. Please refresh and try again.' instead of the filters, report table, and CSV export controls."
+          "description": "Add a visible display of the party GST number alongside each party name in the party summary list or table. The PartySummary data type from the backend already includes a gstNumber field. Render this field in the UI for each party entry, labeled appropriately (e.g., 'GST No:' or as a column header if using a table layout). Ensure the GST number is visible without requiring inline editing to be activated. Maintain the Version 24 styling and layout; position the GST number logically near the party name or billing statistics."
         }
       ]
     }

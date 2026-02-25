@@ -1,22 +1,33 @@
 import Map "mo:core/Map";
 import Float "mo:core/Float";
 import Text "mo:core/Text";
+import Int "mo:core/Int";
+import Array "mo:core/Array";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import Array "mo:core/Array";
-import Int "mo:core/Int";
-import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "authorization/access-control";
 import Migration "migration";
 
-// Apply data migration logic on reload
 (with migration = Migration.run)
 actor {
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
+
   public type UserProfile = {
     name : Text;
+    // Other user metadata if needed
   };
 
-  // Updated line item type with unitary system
+  public type CompanySettings = {
+    companyAddress : Text;
+    accountNumber : Text;
+    panNumber : Text;
+    gstin : Text;
+    ifscCode : Text;
+    bankName : Text;
+  };
+
   public type LineItem = {
     srNo : Nat;
     hsnCode : Text;
@@ -27,9 +38,14 @@ actor {
     totalAmount : Float;
   };
 
-  // Bill type
+  public type PartyProfile = {
+    gstNumber : Text;
+    address : Text;
+  };
+
   public type Bill = {
     partyName : Text;
+    partyGstNo : ?Text;
     invoiceNumber : Text;
     baseAmount : Float;
     cgst : Float;
@@ -41,33 +57,29 @@ actor {
     pendingAmount : Float;
     billDate : Int;
     lineItems : [LineItem];
+    siteAddress : Text;
   };
 
-  // Bill operation type
   public type BillOperation = {
     partyName : Text;
+    partyGstNo : ?Text;
     invoiceNumber : Text;
     billDate : Int;
     lineItems : [LineItem];
     amountPaid : Float;
+    siteAddress : Text;
   };
 
-  // Party profile type
-  public type PartyProfile = {
-    gstNumber : Text;
-  };
-
-  // Party summary type
   public type PartySummary = {
     partyName : Text;
     gstNumber : Text;
+    address : Text;
     totalBilled : Float;
     totalPaid : Float;
     totalPending : Float;
     billCount : Nat;
   };
 
-  // Company report type
   public type CompanyReport = {
     totalServiceAmount : Float;
     totalReceived : Float;
@@ -75,7 +87,6 @@ actor {
     bills : [Bill];
   };
 
-  // Profit and loss summary type
   public type ProfitLossSummary = {
     totalBilled : Float;
     totalReceived : Float;
@@ -83,20 +94,16 @@ actor {
     profitLossIndicator : Bool;
   };
 
-  // Maximum line items per bill
   let MAX_LINE_ITEMS : Nat = 15;
 
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
-
-  // Stable persistent store for all authenticated persistent bills
   let userProfiles = Map.empty<Principal, UserProfile>();
-  let partyGstNumbers = Map.empty<Text, PartyProfile>();
+  let partyProfiles = Map.empty<Text, PartyProfile>();
   let bills = Map.empty<Text, Bill>();
+  var companySettings : ?CompanySettings = null;
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+      Runtime.trap("Unauthorized: Only users can access profiles");
     };
     userProfiles.get(caller);
   };
@@ -115,35 +122,66 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  public shared ({ caller }) func savePartyGstNumber(partyName : Text, gstNumber : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save GST numbers");
-    };
-    partyGstNumbers.add(partyName, { gstNumber });
+  // Company settings methods (accessible to authenticated users)
+  public shared ({ caller }) func saveCompanySettings(settings : CompanySettings) : async () {
+    companySettings := ?settings;
   };
 
-  public query ({ caller }) func getPartyGstNumber(partyName : Text) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view GST numbers");
+  public query ({ caller }) func getCompanySettings() : async ?CompanySettings {
+    companySettings;
+  };
+
+  public shared ({ caller }) func savePartyGstNumber(partyName : Text, gstNumber : Text) : async () {
+    switch (partyProfiles.get(partyName)) {
+      case (?existingProfile) {
+        partyProfiles.add(partyName, { existingProfile with gstNumber });
+      };
+      case (null) {
+        partyProfiles.add(
+          partyName,
+          {
+            gstNumber;
+            address = "";
+          },
+        );
+      };
     };
-    switch (partyGstNumbers.get(partyName)) {
-      case (?profile) { profile.gstNumber };
-      case (null) { "" };
+  };
+
+  public shared ({ caller }) func savePartyAddress(partyName : Text, address : Text) : async () {
+    switch (partyProfiles.get(partyName)) {
+      case (?existingProfile) {
+        partyProfiles.add(partyName, { existingProfile with address });
+      };
+      case (null) {
+        partyProfiles.add(
+          partyName,
+          {
+            gstNumber = "";
+            address;
+          },
+        );
+      };
+    };
+  };
+
+  public query ({ caller }) func getPartyProfile(partyName : Text) : async PartyProfile {
+    switch (partyProfiles.get(partyName)) {
+      case (null) {
+        {
+          gstNumber = "";
+          address = "";
+        };
+      };
+      case (?profile) { profile };
     };
   };
 
   public query ({ caller }) func billExists(invoiceNumber : Text) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can check bills");
-    };
     bills.containsKey(invoiceNumber);
   };
 
   public shared ({ caller }) func addBill(billOp : BillOperation) : async Bill {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can add bills");
-    };
-
     if (billOp.lineItems.size() > MAX_LINE_ITEMS) {
       Runtime.trap("Too many line items: maximum allowed is 15");
     };
@@ -155,7 +193,6 @@ actor {
       case (null) {};
     };
 
-    // Calculate base amount from line items
     var baseAmount : Float = 0.0;
     for (item in billOp.lineItems.values()) {
       baseAmount += item.totalAmount;
@@ -171,6 +208,7 @@ actor {
 
     let bill : Bill = {
       partyName = billOp.partyName;
+      partyGstNo = billOp.partyGstNo;
       invoiceNumber = billOp.invoiceNumber;
       baseAmount;
       cgst;
@@ -182,6 +220,7 @@ actor {
       pendingAmount = finalAmountRounded - amountPaid;
       billDate = billOp.billDate;
       lineItems = billOp.lineItems;
+      siteAddress = billOp.siteAddress;
     };
 
     bills.add(billOp.invoiceNumber, bill);
@@ -189,18 +228,13 @@ actor {
   };
 
   public shared ({ caller }) func editBill(invoiceNumber : Text, updatedBillOp : BillOperation) : async Bill {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can edit bills");
-    };
-
     if (updatedBillOp.lineItems.size() > MAX_LINE_ITEMS) {
       Runtime.trap("Too many line items: maximum allowed is 15");
     };
 
     switch (bills.get(invoiceNumber)) {
       case (null) { Runtime.trap("Bill not found") };
-      case (?existingBill) {
-        // If invoice number is being changed, check for duplicate
+      case (?_) {
         if (updatedBillOp.invoiceNumber != invoiceNumber) {
           switch (bills.get(updatedBillOp.invoiceNumber)) {
             case (?_) {
@@ -210,7 +244,6 @@ actor {
           };
         };
 
-        // Calculate base amount from line items
         var baseAmount : Float = 0.0;
         for (item in updatedBillOp.lineItems.values()) {
           baseAmount += item.totalAmount;
@@ -226,6 +259,7 @@ actor {
 
         let updatedBill : Bill = {
           partyName = updatedBillOp.partyName;
+          partyGstNo = updatedBillOp.partyGstNo;
           invoiceNumber = updatedBillOp.invoiceNumber;
           baseAmount;
           cgst;
@@ -237,9 +271,9 @@ actor {
           pendingAmount = finalAmountRounded - amountPaid;
           billDate = updatedBillOp.billDate;
           lineItems = updatedBillOp.lineItems;
+          siteAddress = updatedBillOp.siteAddress;
         };
 
-        // Remove old entry if invoice number changed
         if (updatedBillOp.invoiceNumber != invoiceNumber) {
           bills.remove(invoiceNumber);
         };
@@ -251,10 +285,6 @@ actor {
   };
 
   public shared ({ caller }) func deleteBill(invoiceNumber : Text) : async Bill {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete bills");
-    };
-
     switch (bills.get(invoiceNumber)) {
       case (null) { Runtime.trap("Bill not found") };
       case (?bill) {
@@ -265,10 +295,6 @@ actor {
   };
 
   public query ({ caller }) func getBill(invoiceNumber : Text) : async Bill {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view bills");
-    };
-
     switch (bills.get(invoiceNumber)) {
       case (null) { Runtime.trap("Bill not found") };
       case (?bill) { bill };
@@ -276,10 +302,6 @@ actor {
   };
 
   public query ({ caller }) func getBillsByParty(partyName : Text) : async [Bill] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can search bills");
-    };
-
     let allBills = bills.values().toArray();
     allBills.filter(
       func(bill : Bill) : Bool {
@@ -289,10 +311,6 @@ actor {
   };
 
   public query ({ caller }) func getAllBills() : async [Bill] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view bills");
-    };
-
     let allBills = bills.values().toArray();
     allBills.sort(
       func(a, b) {
@@ -305,10 +323,6 @@ actor {
     totalAmount : Float;
     totalGst : Float;
   } {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view aggregates");
-    };
-
     let allBills = bills.values().toArray();
     var totalAmount = 0.0;
     var totalGst = 0.0;
@@ -325,13 +339,8 @@ actor {
   };
 
   public query ({ caller }) func getPartySummary() : async [PartySummary] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view party summaries");
-    };
-
     let billsArray = bills.values().toArray();
 
-    // Group bills by party name
     let grouped = billsArray.foldLeft(
       Map.empty<Text, PartySummary>(),
       func(acc, bill) {
@@ -339,8 +348,12 @@ actor {
           case (null) {
             {
               partyName = bill.partyName;
-              gstNumber = switch (partyGstNumbers.get(bill.partyName)) {
+              gstNumber = switch (partyProfiles.get(bill.partyName)) {
                 case (?profile) { profile.gstNumber };
+                case (null) { "" };
+              };
+              address = switch (partyProfiles.get(bill.partyName)) {
+                case (?profile) { profile.address };
                 case (null) { "" };
               };
               totalBilled = bill.finalAmount;
@@ -368,10 +381,6 @@ actor {
   };
 
   public query ({ caller }) func getPartySummaryByDateRange(from : Int, to : Int) : async [PartySummary] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view party summaries");
-    };
-
     let billsArray = bills.values().toArray();
     let filteredBills = billsArray.filter(
       func(bill) {
@@ -379,7 +388,6 @@ actor {
       }
     );
 
-    // Group filtered bills by party name
     let grouped = filteredBills.foldLeft(
       Map.empty<Text, PartySummary>(),
       func(acc, bill) {
@@ -387,8 +395,12 @@ actor {
           case (null) {
             {
               partyName = bill.partyName;
-              gstNumber = switch (partyGstNumbers.get(bill.partyName)) {
+              gstNumber = switch (partyProfiles.get(bill.partyName)) {
                 case (?profile) { profile.gstNumber };
+                case (null) { "" };
+              };
+              address = switch (partyProfiles.get(bill.partyName)) {
+                case (?profile) { profile.address };
                 case (null) { "" };
               };
               totalBilled = bill.finalAmount;
@@ -416,10 +428,6 @@ actor {
   };
 
   public query ({ caller }) func getCompanyReport(partyName : Text, from : Int, to : Int) : async CompanyReport {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view company reports");
-    };
-
     let billsArray = bills.values().toArray();
 
     let filteredBills = billsArray.filter(
@@ -451,10 +459,6 @@ actor {
   };
 
   public query ({ caller }) func getProfitLossSummary(from : Int, to : Int) : async ProfitLossSummary {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profit/loss summary");
-    };
-
     let billsArray = bills.values().toArray();
     let filteredBills = billsArray.filter(
       func(bill) {
@@ -480,10 +484,6 @@ actor {
 
   // Returns all unique party names from the bills for autocomplete suggestions
   public query ({ caller }) func getUniquePartyNames() : async [Text] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view party names");
-    };
-
     let billsArray = bills.values().toArray();
     let seen = Map.empty<Text, Bool>();
     for (bill in billsArray.vals()) {
@@ -494,10 +494,6 @@ actor {
 
   // Returns all unique product names from the bills for autocomplete suggestions
   public query ({ caller }) func getUniqueProductNames() : async [Text] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view product names");
-    };
-
     let billsArray = bills.values().toArray();
     let seen = Map.empty<Text, Bool>();
     for (bill in billsArray.vals()) {

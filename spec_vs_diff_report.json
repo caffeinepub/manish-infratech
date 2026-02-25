@@ -1,65 +1,55 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T08:46:43.243Z",
-  "summary": "The diff implements most of the three requirements. REQ-93 is fully covered with @media print rules in index.css and no-print classes in Layout.tsx and InvoicePrintPage.tsx. REQ-94 is partially addressed (loading spinners, error messages, and actor usage are updated across pages), but the actual useActor.ts hook implementation and the IDL/Candid interface file are not shown in the diff, making it impossible to verify anonymous identity, caching, or IDL signature matching. REQ-95 is partially addressed via migration.mo and updates to main.mo, but the diff is truncated and does not confirm stable variables, preupgrade/postupgrade hooks, or global (non-per-principal) bill storage.",
+  "generatedAt": "2026-02-25T12:48:47.802Z",
+  "summary": "The diff implements most of the requested requirements. REQ-2 backend fields use partyGstNo (optional ?Text) rather than the specified partyGstNumber/partyAddress as new explicit Text fields with backward compatibility defaults. REQ-5 is partially implemented: SummaryPage and SearchBillsPage show party GST via BillResultsTable, but PartySummaryPage GST display evidence is absent. REQ-3 EditBillModal does not pre-populate partyAddress from saved bill data (only from party profile). The migration module does not actually add new fields.",
   "missing_requirements": [
     {
-      "id": "REQ-94",
-      "requirement": "Audit and fix useActor.ts to ensure ICP backend canister actor is created with anonymous identity, instantiated once, cached, and reused. Fix any IDL/Candid interface mismatch.",
-      "reason": "The file frontend/src/hooks/useActor.ts is not present in the diff. There is no evidence that the actor is initialized with anonymous identity, cached as a singleton, or that the Candid IDL interface was audited or corrected.",
+      "id": "REQ-2",
+      "requirement": "partyAddress must be persisted on each bill record; addBill and editBill must accept and store partyAddress; existing bills default to empty strings if missing",
+      "reason": "The backend Bill type uses partyGstNo as ?Text (optional, not a required Text field with default empty string). There is no partyAddress field visible on the Bill type in main.mo. The migration.mo does not add partyAddress to bills. BillOperation also lacks partyAddress. The spec requires both partyGstNumber and partyAddress as Text fields on the bill record.",
       "evidence": [
-        "frontend/src/hooks/useActor.ts"
+        "backend/main.mo",
+        "backend/migration.mo"
       ]
     },
     {
-      "id": "REQ-94",
-      "requirement": "The IDL/Candid interface declared in the frontend exactly matches all backend method signatures (addBill, editBill, deleteBill, getAllBills, searchBills, getPartySummaryByDateRange, getCompanyReport, getProfitLossSummary, savePartyGstNumber, getPartyGstNumber, getUniquePartyNames, getUniqueProductNames).",
-      "reason": "No frontend IDL/Candid interface file appears in the diff. There is no way to verify that all 11 method signatures match the updated backend/main.mo.",
+      "id": "REQ-3",
+      "requirement": "EditBillModal displays Party Address input field pre-populated with the saved bill's partyAddress value",
+      "reason": "EditBillModal initializes partyAddress to empty string rather than from bill.partyAddress, because the Bill type does not carry a partyAddress field. The saved address is only fetched from partyProfile, not from the bill record itself.",
       "evidence": [
-        "frontend/src/hooks/useActor.ts"
+        "frontend/src/components/EditBillModal.tsx"
       ]
     },
     {
-      "id": "REQ-95",
-      "requirement": "backend/main.mo must use stable variables for bills map and partyProfiles map, and preupgrade/postupgrade hooks must correctly serialize and deserialize all stable state.",
-      "reason": "The backend/main.mo diff is truncated. The visible portion shows 'let bills = Map.empty<Text, Bill>()' using let rather than stable var, and no preupgrade/postupgrade hooks are visible in the truncated content.",
+      "id": "REQ-5",
+      "requirement": "PartySummaryPage displays party GST number next to each party name",
+      "reason": "No diff evidence shows modification to a PartySummaryPage component or parties page to display GST numbers. The PartySummary type includes gstNumber, but no page-level rendering change is evidenced in the diff.",
       "evidence": [
-        "backend/main.mo"
+        "frontend-file-summaries.txt"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "A migration module (backend/migration.mo) with a run() function and typed OldActor/NewActor state was added, along with a 'with migration = Migration.run' clause in main.mo.",
-      "reason": "The build request only asked to confirm and fix stable variables and preupgrade/postupgrade hooks in main.mo. No migration module or with-clause migration pattern was requested.",
+      "description": "Migration module added but performs a no-op transformation with identical OldBill and NewBill types and no new fields",
+      "reason": "A migration file was created that maps old bills to new bills with identical structure, providing no actual schema migration for new fields. This adds complexity without fulfilling the backward-compatibility requirement for new fields.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
-      ]
-    },
-    {
-      "description": "A 'Connected' green success indicator banner is shown in AddBillPage when the actor is successfully initialized.",
-      "reason": "The build request specifies only a loading spinner during initialization and an error message on failure. A connected success indicator was not requested.",
-      "evidence": [
-        "frontend/src/pages/AddBillPage.tsx"
+        "backend/migration.mo"
       ]
     }
   ],
-  "confidence": 0.62,
+  "confidence": 0.72,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/components/AddBillForm.tsx",
+    "frontend/src/components/BillResultsTable.tsx",
+    "frontend/src/components/EditBillModal.tsx",
     "frontend/src/components/InvoicePrintView.tsx",
-    "frontend/src/components/Layout.tsx",
-    "frontend/src/index.css",
-    "frontend/src/pages/AddBillPage.tsx",
-    "frontend/src/pages/CompanyReportPage.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/InvoicePrintPage.tsx",
-    "frontend/src/pages/PartySummaryPage.tsx",
-    "frontend/src/pages/SearchBillsPage.tsx",
-    "frontend/src/pages/SummaryPage.tsx",
     "project_state.json"
   ]
 }

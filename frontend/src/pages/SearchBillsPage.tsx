@@ -1,90 +1,62 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
 import { useGetAllBills } from '../hooks/useQueries';
-import { useActor } from '../hooks/useActor';
 import BillResultsTable from '../components/BillResultsTable';
 
 export default function SearchBillsPage() {
-  const [query, setQuery] = useState('');
-  const { actor, isFetching: actorFetching } = useActor();
-  const { data: bills = [], isLoading, isError } = useGetAllBills();
+  const { data: allBills = [], isLoading } = useGetAllBills();
+  const [invoiceFilter, setInvoiceFilter] = useState('');
+  const [partyFilter, setPartyFilter] = useState('');
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return bills;
-    const q = query.toLowerCase();
-    return bills.filter(
-      (b) =>
-        b.partyName.toLowerCase().includes(q) ||
-        b.invoiceNumber.toLowerCase().includes(q)
-    );
-  }, [bills, query]);
-
-  const isConnecting = actorFetching && !actor;
-  const hasError = !actorFetching && !actor;
-
-  if (isConnecting) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
-        <div className="flex items-center justify-center py-16">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm">Connecting to server…</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasError || isError) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <AlertCircle className="h-10 w-10 text-destructive" />
-          <p className="text-base font-semibold text-foreground">
-            Unable to connect to server. Please refresh and try again.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const filtered = allBills.filter(bill => {
+    const matchInvoice = !invoiceFilter || bill.invoiceNumber.toLowerCase().includes(invoiceFilter.toLowerCase());
+    const matchParty = !partyFilter || bill.partyName.toLowerCase().includes(partyFilter.toLowerCase());
+    return matchInvoice && matchParty;
+  });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Search Bills</h1>
-
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by party name or invoice number…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-        />
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Search Bills</h1>
+        <p className="text-gray-600 text-sm mt-1">Find bills by invoice number or party name</p>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
+        <div className="flex-1 min-w-48">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+          <input
+            type="text"
+            value={invoiceFilter}
+            onChange={(e) => setInvoiceFilter(e.target.value)}
+            placeholder="Search by invoice number..."
+            className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red text-sm"
+          />
         </div>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-3">
-            {filtered.length} bill{filtered.length !== 1 ? 's' : ''} found
-            {query ? ` for "${query}"` : ''}
-          </p>
+        <div className="flex-1 min-w-48">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Party Name</label>
+          <input
+            type="text"
+            value={partyFilter}
+            onChange={(e) => setPartyFilter(e.target.value)}
+            placeholder="Search by party name..."
+            className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Results */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Results <span className="text-sm font-normal text-gray-500">({filtered.length} bills)</span>
+          </h2>
+        </div>
+        {isLoading ? (
+          <div className="text-center py-8 text-gray-500">Loading bills...</div>
+        ) : (
           <BillResultsTable bills={filtered} />
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
